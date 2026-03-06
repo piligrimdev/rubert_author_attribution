@@ -20,18 +20,20 @@ services:
     image: ghcr.io/mlflow/mlflow:v2.18.0
     container_name: mlflow
     restart: unless-stopped
+    env_file:
+      - .env
     depends_on:
       mlflow-db:
         condition: service_healthy
     volumes:
       - ./mlartifacts:/mlartifacts
     command: >
-      bash -c "pip install --quiet psycopg2-binary &&
+      bash -c "pip install --quiet psycopg2-binary boto3 &&
       mlflow server
       --host 0.0.0.0
       --port 5000
       --backend-store-uri postgresql+psycopg2://${MLFLOW_DB_USER:-mlflow}:${MLFLOW_DB_PASSWORD:-mlflow}@mlflow-db:5432/${MLFLOW_DB_NAME:-mlflow}
-      --artifacts-destination file:///mlartifacts
+      --artifacts-destination s3://${MLFLOW_BUCKET}/mlflow-artifacts
       --serve-artifacts"
     ports:
       - "2000:5000"
