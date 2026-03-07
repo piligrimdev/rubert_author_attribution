@@ -3497,6 +3497,18 @@ nearley = ["js2py"]
 regex = ["regex"]
 
 [[package]]
+name = "legacy-cgi"
+version = "2.6.4"
+description = "Fork of the standard library cgi and cgitb modules removed in Python 3.13"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "legacy_cgi-2.6.4-py3-none-any.whl", hash = "sha256:7e235ce58bf1e25d1fc9b2d299015e4e2cd37305eccafec1e6bac3fc04b878cd"},
+    {file = "legacy_cgi-2.6.4.tar.gz", hash = "sha256:abb9dfc7835772f7c9317977c63253fd22a7484b5c9bbcdca60a29dcce97c577"},
+]
+
+[[package]]
 name = "lexicalrichness"
 version = "0.5.1"
 description = "A small module to compute textual lexical richness (aka lexical diversity)."
@@ -8830,4 +8842,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13,<3.15"
-content-hash = "b6c0b491c1df3f1634596dc56653201e9994fb8f3b78d7144c4d0e1e8586a75c"
+content-hash = "7d46dd7a0f44352619f3b97fc1da383480617c29c5090c11a4df6cc69d4b6cfe"
