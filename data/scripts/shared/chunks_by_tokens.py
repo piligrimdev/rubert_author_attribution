@@ -61,12 +61,12 @@ def split_into_chunks(text: str, tokenizer,
     return chunks
 
 
-def split_text_to_chunks(df, tokenizer, author_col='author', text_col='text'):
+def split_text_to_chunks(df, tokenizer, chunk_size: int = 150, author_col='author', text_col='text'):
     result = []
 
     for author, group in df.groupby(author_col):
         for text in group[text_col]:
-            chunks = split_into_chunks(text, tokenizer)
+            chunks = split_into_chunks(text, tokenizer, chunk_size)
             source_id = hashlib.md5(text.encode('utf-8')).hexdigest()
             for chunk in chunks:
                 result.append(
