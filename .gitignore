@@ -24,3 +24,8 @@ dvclive/
 .idea/
 .DS_Store
 .dvc/config
+papers/
+context/
+conversations/
+CLAUDE.md
+
