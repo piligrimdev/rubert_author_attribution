@@ -27,5 +27,6 @@ dvclive/
 papers/
 context/
 conversations/
+*.pt
 CLAUDE.md
 
