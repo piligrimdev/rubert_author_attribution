@@ -8,6 +8,7 @@ from ..crud.entities.text import TextCRUDDatabaseProvider
 from ..crud.entities.genre import GenreCRUDDatabaseProvider
 from ..crud.entities.user import UserCRUDDatabaseProvider, RoleCRUDDatabaseProvider
 from ..models.BERT_model import BertModelProvider
+from ..models.qwen_adapted_model_provider import QwenAdaptedModelProvider
 from ..services.author_generation_service import GenerativeService
 from ..services.metrics_service import MetricsService
 from ..services.user_service import UserService
@@ -71,6 +72,17 @@ metrics_service = MetricsService(
     mock_metrics_compute,
     task_cache
 )
+
+SYSTEM_PROMPT = (
+    "Ты — стилист текста. Перепиши данный нейтральный текст в стиле автора, "
+    "сохранив смысл, но изменив манеру изложения, лексику и интонацию."
+)
+
+# generative_model = QwenAdaptedModelProvider(
+#     'Qwen/Qwen2.5-7B-Instruct',
+#     '/Users/pgdev/PycharmProjects/diplomm/models/qwn',
+#     SYSTEM_PROMPT
+# )
 
 generative_service = GenerativeService(
     None
