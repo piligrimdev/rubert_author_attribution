@@ -7,8 +7,14 @@ from ..crud.entities.author import AuthorCRUDDatabaseProvider
 from ..crud.entities.text import TextCRUDDatabaseProvider
 from ..crud.entities.genre import GenreCRUDDatabaseProvider
 from ..crud.entities.user import UserCRUDDatabaseProvider, RoleCRUDDatabaseProvider
+
 from ..models.BERT_model import BertModelProvider
+from ..models.bert.prediction_strategies import votes_with_sim_threshold
+
 from ..models.qwen_adapted_model_provider import QwenAdaptedModelProvider
+
+from ..models.mock_model import MockModelProvider
+
 from ..services.author_generation_service import GenerativeService
 from ..services.metrics_service import MetricsService
 from ..services.user_service import UserService
@@ -42,6 +48,8 @@ if use_bert:
             bert_file_path,
             bert_tokenizer_name
         )
+else:
+    model = MockModelProvider()
 
 
 user_service = UserService(
@@ -64,7 +72,7 @@ text_service = TextService(
     model,
 )
 
-attribute_service = AttributeService(model, text_service)
+attribute_service = AttributeService(model, text_service, votes_with_sim_threshold)
 task_cache = MockTaskCache()
 
 metrics_service = MetricsService(

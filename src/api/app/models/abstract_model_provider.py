@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 
 
 class AbstractModelProvider(ABC):
+    is_embedder = None
 
     @abstractmethod
     async def predict(

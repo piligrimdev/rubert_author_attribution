@@ -1,5 +1,5 @@
 import uuid
-from typing import List
+from typing import List, Optional
 
 from fastapi import HTTPException
 
@@ -124,12 +124,31 @@ class TextService:
         )
 
     async def find_nearest(
-            self, text: str, user_id, k: int, session
+            self,
+            text: str,
+            user_id,
+            k: int,
+            session,
+            author_ids: Optional[List[uuid.UUID]] = None,
     ) -> NearestTextsResponse:
-        author_ids = await self._get_available_author_ids(user_id, session)
+        available_ids = await self._get_available_author_ids(user_id, session)
 
-        if not author_ids:
+        if not available_ids:
             return NearestTextsResponse(items=[])
+
+        if author_ids is None:
+            search_author_ids = available_ids
+        elif not author_ids:
+            return NearestTextsResponse(items=[])
+        else:
+            available_set = set(available_ids)
+            missing = [aid for aid in author_ids if aid not in available_set]
+            if missing:
+                raise HTTPException(
+                    status_code=403,
+                    detail="One or more authors are not available to you",
+                )
+            search_author_ids = author_ids
 
         embedding = self.model.generate_embedding(text)
         if isinstance(embedding[0], list):
@@ -137,7 +156,7 @@ class TextService:
 
         results = await self.crud.find_nearest(
             embedding=embedding,
-            author_ids=author_ids,
+            author_ids=search_author_ids,
             k=k,
             session=session,
         )

@@ -62,6 +62,7 @@ class AuthorService:
             name=created_author.name,
             surname=created_author.surname,
             last_name=created_author.last_name,
+            description=created_author.description,
             provided_by=provided_id,
             id=created_author.id,
         )
@@ -90,6 +91,7 @@ class AuthorService:
                     name=author.name,
                     surname=author.surname,
                     last_name=author.last_name,
+                    description=author.description,
                     provided_by=provided_id,
                     id=author.id,
                 )

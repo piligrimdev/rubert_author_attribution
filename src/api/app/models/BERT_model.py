@@ -6,7 +6,15 @@ from transformers import AutoModel, AutoTokenizer
 from .abstract_model_provider import AbstractModelProvider
 
 class BertModelProvider(AbstractModelProvider):
-    def __init__(self, path_to_pretrained_model: str = "", tokenizer_model_name: str = "", max_emb_len=256, model = None):
+    is_embedder = True
+
+    def __init__(
+            self,
+            path_to_pretrained_model: str = "",
+            tokenizer_model_name: str = "",
+            max_emb_len=256,
+            model = None,
+    ):
 
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_model_name)
 
@@ -23,6 +31,9 @@ class BertModelProvider(AbstractModelProvider):
 
 
     def generate_embedding(self, text: str) -> list:
+        if not self.model:
+            return [0]*self.max_emb_len
+
         with torch.no_grad():
             enc = self.tokenizer(
                 text, max_length=self.max_emb_len,

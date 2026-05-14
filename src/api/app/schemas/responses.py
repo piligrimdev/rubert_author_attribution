@@ -1,5 +1,5 @@
 import uuid
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
@@ -47,6 +47,13 @@ class NearestTextItem(BaseModel):
 
 
 class NearestTextsResponse(BaseModel):
+    items: List[NearestTextItem]
+
+class VotesResponse(BaseModel):
+    predicted: Optional[uuid.UUID]
+    confidence: float
+    avg_sim: float
+    votes: dict[str, int]
     items: List[NearestTextItem]
 
 class GenerateStyledResponse(BaseModel):

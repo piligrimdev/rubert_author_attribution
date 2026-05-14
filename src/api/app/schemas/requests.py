@@ -47,9 +47,25 @@ class CreateTextForm(BaseModel):
     genre_name: str = Field(description="Genre name")
 
 
-class PredictNearestRequest(BaseModel):
+class SearchNearestRequest(BaseModel):
     text: str = Field(description="Text to find nearest matches for")
     k: int = Field(default=5, description="Number of nearest texts to return", ge=1)
+    author_ids: Optional[List[uuid.UUID]] = Field(
+        default=None,
+        description=(
+            "If set, nearest-neighbor search uses only embeddings of these authors "
+            "(must be a subset of authors available to the user). "
+            "If omitted, all available authors are used."
+        ),
+    )
+
+class PredictRequest(SearchNearestRequest):
+    threshold: float = Field(
+        default=0.5,
+        description="Threshold of top cosine similarity to attribute authorship",
+        gt=0,
+        le=1
+    )
 
 class GetMetricsRequest(BaseModel):
     author_id: uuid.UUID = Field(description="UUID of the author")

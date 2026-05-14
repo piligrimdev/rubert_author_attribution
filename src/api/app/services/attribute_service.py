@@ -1,4 +1,5 @@
-from typing import List
+from typing import List, Optional, Callable
+import uuid
 
 from sqlalchemy.orm import Session
 
@@ -10,24 +11,43 @@ from ..schemas.responses import (
 
 
 class AttributeService:
-    def __init__(self, model: AbstractModelProvider, text_service):
+    def __init__(self, model: AbstractModelProvider, text_service, prediction_strategy: Callable):
         self.model = model
         self.text_service = text_service
+        self.prediction_strategy = prediction_strategy
 
-    def attribute(
-        self, form: AttributionRequest, easy_mode: bool = False, session: Session = None
+    async def attribute(
+            self,
+            text: str,
+            user_id: uuid,
+            k: int,
+            threshold: float = 0.5,
+            session: Session = None,
+            author_ids: Optional[List[uuid.UUID]] = None,
     ) -> List[AttributionProba]:
-        if not self.model:
-            return [AttributionProba(author="me", proba=100)]
 
-        authors, probs = self.model.predict(form.text, k_nearest=5)
+        if not self.model:
+            raise NotImplementedError
+
+        if self.prediction_strategy:
+            if self.model.is_embedder:
+                nearest = await self.predict_nearest(
+                    text,
+                    user_id,
+                    k,
+                    session,
+                    author_ids
+                )
+                return self.prediction_strategy(nearest.items, threshold)
+
+        authors, probs = self.model.predict(text, k_nearest=5)
         return [
             AttributionProba(author=author, proba=proba)
             for author, proba in zip(authors, probs)
         ]
 
     def get_embedding(
-            self, form: AttributionRequest, easy_mode: bool = False, session: Session = None
+            self, form: AttributionRequest, session: Session = None
     ) -> EmbeddingResponse:
         if not self.model:
             return [AttributionProba(author="me", proba=100)]
@@ -37,8 +57,15 @@ class AttributeService:
         return EmbeddingResponse(embedding=emb)
 
     async def predict_nearest(
-            self, text: str, user_id, k: int, session
+            self,
+            text: str,
+            user_id,
+            k: int,
+            session,
+            author_ids: Optional[List[uuid.UUID]] = None,
     ) -> NearestTextsResponse:
         if self.text_service is None:
             return NearestTextsResponse(items=[])
-        return await self.text_service.find_nearest(text, user_id, k, session)
+        return await self.text_service.find_nearest(
+            text, user_id, k, session, author_ids=author_ids
+        )

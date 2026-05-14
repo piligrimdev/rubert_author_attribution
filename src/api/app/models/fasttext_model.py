@@ -2,6 +2,8 @@ import fasttext
 from .abstract_model_provider import AbstractModelProvider
 
 class FasttextModelProvider(AbstractModelProvider):
+    is_embedder = False
+
     def __init__(self, path_to_pretrained_model: str):
         self.model = fasttext.load_model(path_to_pretrained_model)
 

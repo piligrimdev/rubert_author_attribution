@@ -2,8 +2,8 @@ from fastapi import APIRouter
 
 from ..core import attribute_service, CurrentUserUUID, session_dependency
 
-from ..schemas.requests import AttributionRequest, PredictNearestRequest
-from ..schemas.responses import AttributionResponse, NearestTextsResponse
+from ..schemas.requests import AttributionRequest, SearchNearestRequest, PredictRequest
+from ..schemas.responses import AttributionResponse, NearestTextsResponse, VotesResponse
 
 attribute_router = APIRouter()
 
@@ -14,12 +14,22 @@ async def get_embedding(
     return attribute_service.get_embedding(form)
 
 
-@attribute_router.post("/predict", response_model=NearestTextsResponse)
-async def predict_nearest(
-    form: PredictNearestRequest,
+@attribute_router.post("/nearest_k", response_model=NearestTextsResponse)
+async def search_nearest(
+    form: SearchNearestRequest,
     user_id: CurrentUserUUID,
     session: session_dependency,
 ):
     return await attribute_service.predict_nearest(
-        form.text, user_id, form.k, session
+        form.text, user_id, form.k, session, author_ids=form.author_ids
+    )
+
+@attribute_router.post("/attribute", response_model=VotesResponse)
+async def predict(
+    form: PredictRequest,
+    user_id: CurrentUserUUID,
+    session: session_dependency,
+):
+    return await attribute_service.attribute(
+        form.text, user_id, form.k, form.threshold, session, author_ids=form.author_ids
     )
