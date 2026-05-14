@@ -26,6 +26,22 @@ export default function AuthorCard({ author }: AuthorCardProps) {
           <Typography variant="h6" gutterBottom>
             {formatFullName(author)}
           </Typography>
+          {author.description ? (
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{
+                mb: 1,
+                display: "-webkit-box",
+                WebkitLineClamp: 3,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+                lineHeight: 1.5,
+              }}
+            >
+              {author.description}
+            </Typography>
+          ) : null}
           <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
             {isAdmin && (
               <Chip

@@ -91,6 +91,15 @@ export default function AuthorDetailPage() {
               />
             )}
           </Stack>
+          {author.description ? (
+            <Typography
+              variant="body1"
+              color="text.secondary"
+              sx={{ mt: 1, whiteSpace: "pre-line", lineHeight: 1.7 }}
+            >
+              {author.description}
+            </Typography>
+          ) : null}
         </Stack>
       </Paper>
 
@@ -118,7 +127,11 @@ export default function AuthorDetailPage() {
         </Box>
       </Paper>
 
-      <AuthorMetricsPanel authorId={author.id} textCount={texts?.length ?? 0} />
+      <AuthorMetricsPanel
+        authorId={author.id}
+        textCount={texts?.length ?? 0}
+        authorsForCompare={authors ?? []}
+      />
 
       {/* Texts section */}
       <Paper sx={{ p: 3 }}>

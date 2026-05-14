@@ -3,11 +3,11 @@ import Typography from "@mui/material/Typography";
 import Divider from "@mui/material/Divider";
 import Fade from "@mui/material/Fade";
 import Stack from "@mui/material/Stack";
-import type { PredictionResponse } from "@/types/prediction";
+import type { NearestTextsResponse } from "@/types/prediction";
 import PredictionResultItem from "./PredictionResultItem";
 
 interface PredictionResultsProps {
-  data: PredictionResponse;
+  data: NearestTextsResponse;
 }
 
 export default function PredictionResults({ data }: PredictionResultsProps) {
@@ -15,7 +15,7 @@ export default function PredictionResults({ data }: PredictionResultsProps) {
 
   if (!items.length) {
     return (
-      <Paper sx={{ p: 3, mt: 3 }}>
+      <Paper sx={{ p: 3 }}>
         <Typography color="text.secondary">
           Похожих текстов не найдено.
         </Typography>
@@ -25,7 +25,7 @@ export default function PredictionResults({ data }: PredictionResultsProps) {
 
   return (
     <Fade in>
-      <Paper sx={{ p: 3, mt: 3 }}>
+      <Paper sx={{ p: 3 }}>
         <Typography variant="h6" gutterBottom>
           Ближайшие тексты
         </Typography>
