@@ -142,7 +142,7 @@ class AuthorAdmin(ModelView, model=Author):
     name = "Author"
     name_plural = "Authors"
     column_list = [Author.id, Author.surname, Author.name, Author.last_name]
-    form_columns = [Author.surname, Author.name, Author.last_name]
+    form_columns = [Author.surname, Author.name, Author.last_name, Author.description]
 
     async def insert_model(self, request: Request, data: dict) -> Author:
         with self.session_maker() as session:
@@ -150,6 +150,7 @@ class AuthorAdmin(ModelView, model=Author):
                 surname=data["surname"],
                 name=data["name"],
                 last_name=data["last_name"],
+                description=data["description"],
             )
             session.add(model)
             session.commit()
@@ -165,6 +166,7 @@ class AuthorAdmin(ModelView, model=Author):
             model.surname = data.get("surname", model.surname)
             model.name = data.get("name", model.name)
             model.last_name = data.get("last_name", model.last_name)
+            model.description = data.get("description", model.description)
             session.add(model)
             session.commit()
             session.refresh(model)

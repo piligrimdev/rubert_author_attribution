@@ -21,6 +21,7 @@ class GetAuthorForm(BaseModel):
     name: Optional[str] = Field(description="Author name")
     surname: Optional[str] = Field(description="Author surname")
     last_name: Optional[str] = Field(description="Author lastname")
+    description: Optional[str] = Field(description="Author description")
     provided_by: Optional[uuid.UUID] = Field(description="UUID of user provided author")
     id: Optional[uuid.UUID] = Field(description="UUID author")
 
