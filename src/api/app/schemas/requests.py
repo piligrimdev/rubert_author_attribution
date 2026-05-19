@@ -71,8 +71,7 @@ class PredictRequest(SearchNearestRequest):
 class GetMetricsRequest(BaseModel):
     author_id: uuid.UUID = Field(description="UUID of the author")
 
-class StartComputeTaskResponse(BaseModel):
-    pass
 
-class GetMetricsTaskResultRequest(BaseModel):
-    pass
+
+class CreateGenreForm(BaseModel):
+    name: str = Field(description="Genre name")

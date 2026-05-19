@@ -1,6 +1,6 @@
 from ..database.mixins.with_id import WithIDMixin
 
-from ..core import Base
+from ..core.database import Base
 from .genre import Genre
 from .author import Author
 from .user import User

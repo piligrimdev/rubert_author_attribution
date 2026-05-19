@@ -2,7 +2,7 @@ from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..database.mixins.with_id import WithIDMixin
-from ..core import Base
+from ..core.database import Base
 
 
 class Genre(Base, WithIDMixin):

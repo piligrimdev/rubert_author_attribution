@@ -3,7 +3,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 import uuid
 
 from ..database.mixins.with_id import WithIDMixin
-from ..core import Base
+from ..core.database import Base
 
 
 class Role(Base, WithIDMixin):

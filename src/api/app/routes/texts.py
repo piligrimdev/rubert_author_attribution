@@ -3,7 +3,8 @@ from typing import List
 
 from fastapi import APIRouter
 
-from ..core import CurrentUserUUID, session_dependency, text_service
+from ..core.dependencies import CurrentUserUUID, session_dependency
+from ..core.services import  text_service
 from ..schemas.requests import CreateTextForm
 from ..schemas.responses import TextItemResponse
 

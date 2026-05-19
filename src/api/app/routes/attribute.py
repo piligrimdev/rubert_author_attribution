@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
-from ..core import attribute_service, CurrentUserUUID, session_dependency
+from ..core.dependencies import CurrentUserUUID, session_dependency
+from ..core.services import attribute_service
 
 from ..schemas.requests import AttributionRequest, SearchNearestRequest, PredictRequest
 from ..schemas.responses import AttributionResponse, NearestTextsResponse, VotesResponse

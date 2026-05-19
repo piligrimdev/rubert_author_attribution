@@ -16,3 +16,16 @@ class GenreCRUDDatabaseProvider(AbstractCRUDDatabaseProvider):
             Genre.genre_name == name,
             session=session
         )
+
+    async def create(
+            self,
+            name: str,
+            session: Session = None
+    ) -> Genre:
+        genre_obj = Genre(genre_name=name)
+
+        session.add(genre_obj)
+        session.commit()
+        session.expunge(genre_obj)
+
+        return genre_obj

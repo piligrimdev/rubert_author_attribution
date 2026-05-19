@@ -58,3 +58,36 @@ class VotesResponse(BaseModel):
 
 class GenerateStyledResponse(BaseModel):
     text: str
+
+class StartComputeTaskResponse(BaseModel):
+    task_id: uuid.UUID = Field(description="Id of the task")
+
+class CorpusCsvImportResult(BaseModel):
+    """Results of csv importing."""
+
+    added: int
+    skipped_empty: int
+    errors: int
+
+class StartCorpusImportTaskResponse(BaseModel):
+    task_id: uuid.UUID = Field(description="Id of the task")
+
+class CorpusImportTaskStatus(BaseModel):
+    task_id: uuid.UUID = Field(description="Id of the task")
+    status: str = Field(description="Celery statuses: PENDING / PROGRESS / SUCCESS / FAILURE")
+    progress: Optional[float] = Field(
+        default=None,
+        description="% of completion",
+    )
+    result: Optional[CorpusCsvImportResult] = Field(
+        default=None,
+        description="populates on task success",
+    )
+    error: Optional[str] = Field(
+        default=None,
+        description="populates on task failure, contains error message",
+    )
+
+class GenreResponse(BaseModel):
+    id: uuid.UUID
+    name: str

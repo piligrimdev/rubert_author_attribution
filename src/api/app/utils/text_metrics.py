@@ -579,6 +579,17 @@ def compute_text_metrics(
 
     return result
 
+def _sanitize_for_json(d: Dict[str, Any]) -> Dict[str, Any]:
+    """Заменяет nan/inf на None, чтобы результат был валидным JSON."""
+    sanitized = {}
+    for k, v in d.items():
+        if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+            sanitized[k] = None
+        else:
+            sanitized[k] = v
+    return sanitized
+
+
 def compute_author_metrics(
     df: pd.DataFrame,
     author_name: str,
@@ -616,13 +627,13 @@ def compute_author_metrics(
             continue
         result[f"{col}_mean"]   = round(float(vals.mean()), 4)
         result[f"{col}_median"] = round(float(vals.median()), 4)
-        result[f"{col}_std"]    = round(float(vals.std()), 4)
+        result[f"{col}_std"]    = round(float(vals.std(ddof=0)), 4)
         result[f"{col}_min"]    = round(float(vals.min()), 4)
         result[f"{col}_max"]    = round(float(vals.max()), 4)
         result[f"{col}_q25"]    = round(float(vals.quantile(0.25)), 4)
         result[f"{col}_q75"]    = round(float(vals.quantile(0.75)), 4)
 
-    return result
+    return _sanitize_for_json(result)
 
 
 

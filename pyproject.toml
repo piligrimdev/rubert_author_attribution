@@ -56,7 +56,10 @@ dependencies = [
     "sqladmin (>=0.25.0,<0.26.0)",
     "itsdangerous (>=2.2.0,<3.0.0)",
     "pyjwt (>=2.12.1,<3.0.0)",
-    "sqlalchemy-utils (>=0.42.1,<0.43.0)"
+    "sqlalchemy-utils (>=0.42.1,<0.43.0)",
+    "celery (>=5.6.3,<6.0.0)",
+    "redis (>=7.4.0,<8.0.0)",
+    "flower (>=2.0.1,<3.0.0)"
 ]
 
 

@@ -7,7 +7,7 @@ from alembic import context
 
 from sqlalchemy_utils import database_exists, create_database
 
-from app.core import Base
+from app.core.database import Base
 #from app.entities.genre import Genre
 
 

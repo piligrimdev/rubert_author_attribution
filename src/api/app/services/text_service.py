@@ -7,6 +7,8 @@ from ..crud.entities.text import TextCRUDDatabaseProvider
 from ..crud.entities.genre import GenreCRUDDatabaseProvider
 from ..crud.abstract_crud_db_provider import NotFoundInDB
 from ..entities.author import Author
+from ..entities.genre import Genre
+from ..entities.text import Text
 from ..models.abstract_model_provider import AbstractModelProvider
 from ..schemas.requests import CreateTextForm
 from ..schemas.responses import TextItemResponse, NearestTextItem, NearestTextsResponse
@@ -79,6 +81,34 @@ class TextService:
             for t in texts
         ]
 
+    def _embed(self, text: str) -> list:
+        embedding = self.model.generate_embedding(text)
+        if isinstance(embedding[0], list):
+            embedding = embedding[0]
+        return embedding
+
+    async def add_text_entity(
+            self,
+            text: str,
+            author: Author,
+            genre: Genre,
+            user_id,
+            session,
+    ) -> Text:
+        # без проверки на доступность автора юзеру для загрузки из csv
+
+        user = await self.user_service.get_user_by_id(user_id, session=session)
+        embedding = self._embed(text)
+
+        return await self.crud.create(
+            text=text,
+            author=author,
+            genre=genre,
+            provided_by=user,
+            embedding=embedding,
+            session=session,
+        )
+
     async def add_text(
             self, form: CreateTextForm, user_id, session
     ) -> TextItemResponse:
@@ -102,9 +132,7 @@ class TextService:
 
         user = await self.user_service.get_user_by_id(user_id, session=session)
 
-        embedding = self.model.generate_embedding(form.text)
-        if isinstance(embedding[0], list):
-            embedding = embedding[0]
+        embedding = self._embed(form.text)
 
         text_obj = await self.crud.create(
             text=form.text,
@@ -150,9 +178,7 @@ class TextService:
                 )
             search_author_ids = author_ids
 
-        embedding = self.model.generate_embedding(text)
-        if isinstance(embedding[0], list):
-            embedding = embedding[0]
+        embedding = self._embed(text)
 
         results = await self.crud.find_nearest(
             embedding=embedding,

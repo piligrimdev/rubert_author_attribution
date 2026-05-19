@@ -5,7 +5,7 @@ from pydantic import ValidationError
 from sqlalchemy import and_
 from starlette.status import HTTP_400_BAD_REQUEST
 
-from ..crud.abstract_crud_db_provider import AlreadyExistsInDB
+from ..crud.abstract_crud_db_provider import AlreadyExistsInDB, NotFoundInDB
 from ..crud.entities.author import AuthorCRUDDatabaseProvider
 from ..entities import User, Author
 
@@ -16,10 +16,29 @@ class AuthorService:
     def __init__(
             self,
             author_crud: AuthorCRUDDatabaseProvider,
-            user_service
+            user_service,
     ):
         self.crud = author_crud
         self.user_service = user_service
+
+    async def get_or_create_entity(
+        self,
+        name: str,
+        surname: str,
+        last_name: str,
+        user_id,
+        session,
+    ) -> Author:
+        # вернет orm, а не схему, чтобы далее работать с бд
+        try:
+            return await self.crud.get_by_full_name(
+                name, surname, last_name, session=session
+            )
+        except NotFoundInDB:
+            user = await self.user_service.get_user_by_id(user_id, session=session)
+            return await self.crud.create(
+                name, surname, last_name, user, session
+            )
         
     async def _get_admins_and_requester(self, user_id, session) -> List[User]:
         admin_users = await self.user_service.get_admin_users(session=session)

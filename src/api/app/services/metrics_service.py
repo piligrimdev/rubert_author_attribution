@@ -3,15 +3,21 @@ import uuid
 from typing import List, Callable
 
 import pandas as pd
+
+from celery import states as celery_states
+from celery.result import AsyncResult
+
 from fastapi import HTTPException
 
-
-from ..schemas.requests import GetMetricsRequest, StartComputeTaskResponse, GetMetricsTaskResultRequest
+from ..core.workers import celery
+from ..schemas.requests import GetMetricsRequest
+from ..schemas.responses import StartComputeTaskResponse
 
 from ..utils.auth import hash_password, check_password, create_access_token, create_refresh_token
 from ..utils.text_metrics import *
 
 from .text_service import TextService
+from .mock_worker_provider import TaskData, MockTaskCache
 
 
 class MetricsService:
@@ -19,18 +25,18 @@ class MetricsService:
             self,
             text_service: TextService,
             on_compute_metrics: Callable,
-            task_cache
+            async_result_fn: Callable,
     ):
         self.text_service = text_service
         self.on_compute_metrics = on_compute_metrics
-        self.task_cache = task_cache
+        self.async_result_fn = async_result_fn
 
     async def start_compute_metrics_task(
             self,
             form: GetMetricsRequest,
             user_id: uuid.UUID,
             session
-    ) -> tuple[str, str]:
+    ) -> StartComputeTaskResponse:
         db_texts = await self.text_service.get_texts_of_author(form.author_id, user_id, session=session)
 
         provided_to_task_texts = [
@@ -41,53 +47,53 @@ class MetricsService:
                                      for x in db_texts
         ][:50]
 
-        df = pd.DataFrame(provided_to_task_texts)
-        task_id = await self.on_compute_metrics(df, provided_to_task_texts[0]['author'], self.task_cache)
+        task_id = await self.on_compute_metrics(provided_to_task_texts, provided_to_task_texts[0]['author'])
 
-        return self.task_cache.get(task_id).result
-
-        #return StartComputeTaskResponse(task_id=task_id)
+        return StartComputeTaskResponse(task_id=task_id)
 
     async def get_compute_metrics_results(
             self,
-            form: GetMetricsTaskResultRequest
+            task_id: uuid.UUID,
     ) -> tuple[str, str]:
-        if not (result := self.task_cache.get(form.task_id)):
-            raise HTTPException(status_code=400, detail=f"Task {form.task_id} not found")
+        if not (result := self.async_result_fn(task_id)):
+            raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
 
-        if not result.status:
-            raise HTTPException(status_code=400, detail=f"Task {form.task_id} is in progress")
+        if result.status == celery_states.FAILURE:
+            raise HTTPException(status_code=500, detail=f"Task {task_id} failed")
 
-        return result.data
+        if result.status != celery_states.SUCCESS:
+            raise HTTPException(status_code=418, detail=f"Task {task_id} is in progress")
 
-@dataclasses.dataclass
-class TaskData:
-    id: uuid.UUID
-    status: str
-    result: dict
-
-class MockTaskCache:
-    def __init__(self) -> None:
-        self.tasks = {}
-
-    def get(self, task_id: str) -> TaskData:
-        return self.tasks[task_id]
-
-    def put(self, task_id: str, data: TaskData):
-        self.tasks[task_id] = data
-
-async def mock_metrics_compute(texts: str, author_name, tasks_cache):
-    task_uuid = uuid.uuid4()
-
-    results = compute_author_metrics(texts, author_name)
-
-    task_data = TaskData(
-        id=task_uuid,
-        status="success",
-        result=results
-    )
-
-    tasks_cache.put(task_uuid, task_data)
-    return task_uuid
+        return result.result
 
 
+
+@celery.task(name="metrics_compute")
+def metrics_compute_celery(texts, author_name):
+    df = pd.DataFrame(texts)
+    return compute_author_metrics(df, author_name)
+
+
+async def metrics_compute(texts: str, author_name):
+    task = metrics_compute_celery.delay(texts, author_name)
+    return task.id
+
+
+def create_mock_async_metric_compute(mock_cache: MockTaskCache) -> Callable:
+    async def mock_metrics_compute(texts: dict, author_name):
+        task_uuid = uuid.uuid4()
+
+        df = pd.DataFrame(texts)
+
+        results = compute_author_metrics(df, author_name)
+
+        task_data = TaskData(
+            id=task_uuid,
+            status="SUCCESS",
+            result=results
+        )
+
+        mock_cache.put(task_uuid, task_data)
+        return task_uuid
+
+    return mock_metrics_compute

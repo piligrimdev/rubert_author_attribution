@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from ..core import generative_service
+from ..core.services import generative_service
 
 from ..schemas.requests import  GenerateStyledRequest
 from ..schemas.responses import GenerateStyledResponse

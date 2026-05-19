@@ -16,6 +16,8 @@ from ..models.qwen_adapted_model_provider import QwenAdaptedModelProvider
 from ..models.mock_model import MockModelProvider
 
 from ..services.author_generation_service import GenerativeService
+from ..services.genre_service import GenreService
+from ..services.corpus_csv_parse_service import CorpusCsvParseService
 from ..services.metrics_service import MetricsService
 from ..services.user_service import UserService
 from ..services.author_service import AuthorService
@@ -35,6 +37,7 @@ mlflow_client = MlflowClient()
 
 use_bert = int(os.getenv("USE_BERT", 0))
 model=None
+model = None
 if use_bert:
     bert_name = os.getenv("MLFLOW_BERT_MODEL_NAME", '')
     bert_tag = os.getenv("MLFLOW_BERT_MODEL_TAG", '')
@@ -59,27 +62,84 @@ user_service = UserService(
     'admin'
 )
 
+author_crud = AuthorCRUDDatabaseProvider()
+genre_crud = GenreCRUDDatabaseProvider()
+text_crud = TextCRUDDatabaseProvider()
+
+genre_service = GenreService(
+    genre_crud
+)
+
 author_service = AuthorService(
-    AuthorCRUDDatabaseProvider(),
-    user_service
+    author_crud,
+    user_service,
 )
 
 text_service = TextService(
-    TextCRUDDatabaseProvider(),
-    GenreCRUDDatabaseProvider(),
+    text_crud,
+    genre_crud,
     author_service,
     user_service,
     model,
 )
 
 attribute_service = AttributeService(model, text_service, votes_with_sim_threshold)
-task_cache = MockTaskCache()
 
-metrics_service = MetricsService(
-    text_service,
-    mock_metrics_compute,
-    task_cache
-)
+corpus_csv_parse_service = CorpusCsvParseService()
+
+from ..services.corpus_upload_storage import build_corpus_upload_storage_from_env
+
+corpus_upload_storage = build_corpus_upload_storage_from_env()
+
+use_celery = int(os.getenv("USE_CELERY", 0))
+
+from ..services.corpus_import_service import CorpusImportService
+
+if use_celery:
+    from celery.result import AsyncResult
+    from ..services.metrics_service import metrics_compute
+    from ..services.corpus_import_service import corpus_csv_import
+
+    metrics_service = MetricsService(
+        text_service,
+        metrics_compute,
+        AsyncResult,
+    )
+    corpus_import_service = CorpusImportService(
+        author_service,
+        genre_service,
+        text_service,
+        user_service,
+        corpus_csv_parse_service,
+        corpus_upload_storage,
+        corpus_csv_import,
+        AsyncResult,
+    )
+else:
+    from ..services.mock_worker_provider import create_mock_async_result, MockTaskCache
+    from ..services.metrics_service import create_mock_async_metric_compute
+    from ..services.corpus_import_service import create_mock_async_corpus_csv_import
+
+    task_cache = MockTaskCache()
+    compute_metrics_method = create_mock_async_metric_compute(task_cache)
+    corpus_csv_import_method = create_mock_async_corpus_csv_import(task_cache)
+    get_async_result = create_mock_async_result(task_cache)
+
+    metrics_service = MetricsService(
+        text_service,
+        compute_metrics_method,
+        get_async_result,
+    )
+    corpus_import_service = CorpusImportService(
+        author_service,
+        genre_service,
+        text_service,
+        user_service,
+        corpus_csv_parse_service,
+        corpus_upload_storage,
+        corpus_csv_import_method,
+        get_async_result,
+    )
 
 SYSTEM_PROMPT = (
     "Ты — стилист текста. Перепиши данный нейтральный текст в стиле автора, "
