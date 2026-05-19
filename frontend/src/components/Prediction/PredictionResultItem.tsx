@@ -42,7 +42,11 @@ export default function PredictionResultItem({ item, rank }: Props) {
         )}
         <Box sx={{ flexGrow: 1 }} />
         <Chip
-          label={`Расстояние: ${item.distance.toFixed(4)}`}
+          label={
+            item.distance != null
+              ? `Расстояние: ${item.distance.toFixed(4)}`
+              : "Без эмбеддинга"
+          }
           size="small"
           variant="outlined"
           color={isTop ? "primary" : "default"}

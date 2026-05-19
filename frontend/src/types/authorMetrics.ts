@@ -1,7 +1,12 @@
-/** Ответ POST /authors/compute_metrics — плоский объект с полями вида metric_mean, metric_q25, … */
+/** Ответ GET /authors/compute_metrics/{task_id} после завершения задачи — те же метрики, что раньше отдавал синхронный POST. */
 export type AuthorMetricsResponse = Record<string, string | number> & {
   author?: string;
   text_count?: number;
+};
+
+/** Ответ POST /authors/compute_metrics — идентификатор фоновой задачи Celery (строкой, как приходит из API). */
+export type StartComputeMetricsTaskResponse = {
+  task_id: string;
 };
 
 export const METRIC_BASE_KEYS = [

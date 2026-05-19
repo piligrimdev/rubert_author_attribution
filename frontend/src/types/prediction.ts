@@ -14,7 +14,8 @@ export interface NearestTextItem {
   text: string;
   author_id: string;
   author: string;
-  distance: number;
+  /** null, если для фрагмента нет эмбеддинга */
+  distance: number | null;
 }
 
 /** Ответ POST /nearest_k */
@@ -25,8 +26,9 @@ export interface NearestTextsResponse {
 /** Ответ POST /attribute */
 export interface VotesResponse {
   predicted: string | null;
-  confidence: number;
-  avg_sim: number;
+  /** Может отсутствовать или быть null при «битых» расстояниях / пустой выборке */
+  confidence: number | null;
+  avg_sim: number | null;
   votes: Record<string, number>;
   items: NearestTextItem[];
 }

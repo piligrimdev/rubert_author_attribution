@@ -16,6 +16,26 @@ function authorLabelForId(authorId: string, items: NearestTextItem[]): string {
   return hit?.author ?? authorId;
 }
 
+/** Безопасно для ответов API с null / NaN (например, без валидных distance). */
+function formatFiniteOrDash(
+  value: number | null | undefined,
+  toFixedDigits: number,
+): string {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return "—";
+  }
+  return value.toFixed(toFixedDigits);
+}
+
+function confidencePercentLabel(
+  confidence: number | null | undefined,
+): string {
+  if (typeof confidence !== "number" || !Number.isFinite(confidence)) {
+    return "Сходство с ближайшим: —";
+  }
+  return `Сходство с ближайшим: ${(confidence * 100).toFixed(1)} %`;
+}
+
 interface Props {
   data: VotesResponse;
 }
@@ -45,12 +65,12 @@ export default function AttributionVoteResults({ data }: Props) {
             </Typography>
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
               <Chip
-                label={`Сходство с ближайшим: ${(confidence * 100).toFixed(1)} %`}
+                label={confidencePercentLabel(confidence)}
                 color="primary"
                 size="small"
               />
               <Chip
-                label={`Среднее расстояние до k соседей: ${avg_sim.toFixed(4)}`}
+                label={`Среднее расстояние до k соседей: ${formatFiniteOrDash(avg_sim, 4)}`}
                 variant="outlined"
                 size="small"
               />

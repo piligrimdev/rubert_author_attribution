@@ -5,6 +5,7 @@ import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
 import { Link } from "react-router-dom";
 import PageTitle from "@/components/common/PageTitle";
 import AuthorsGrid from "@/components/Authors/AuthorsGrid";
@@ -25,15 +26,24 @@ export default function AuthorsPage() {
         <PageTitle subtitle="Список авторов в базе данных. Стилистические метрики (графики) доступны на странице выбранного автора.">
           Авторы
         </PageTitle>
-        <Button
-          component={Link}
-          to="/authors/new"
-          variant="contained"
-          startIcon={<PersonAddIcon />}
-          sx={{ flexShrink: 0 }}
-        >
-          Добавить автора
-        </Button>
+        <Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
+          <Button
+            component={Link}
+            to="/authors/import"
+            variant="outlined"
+            startIcon={<UploadFileIcon />}
+          >
+            Импорт CSV
+          </Button>
+          <Button
+            component={Link}
+            to="/authors/new"
+            variant="contained"
+            startIcon={<PersonAddIcon />}
+          >
+            Добавить автора
+          </Button>
+        </Stack>
       </Box>
 
       {isLoading && (
