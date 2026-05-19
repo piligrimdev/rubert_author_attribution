@@ -11,6 +11,8 @@ notebooks/**/.ipynb_checkpoints/
 
 models/*.pt
 models/*.bin
+models/qwen_lora/
+
 
 # MLflow
 mlruns/
@@ -32,4 +34,7 @@ CLAUDE.md
 
 *.pem
 *.pem.pub
+
+.secrets
+
 

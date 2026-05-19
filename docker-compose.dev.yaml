@@ -19,6 +19,7 @@ services:
   mlflow:
     image: ghcr.io/mlflow/mlflow:latest
     container_name: mlflow
+    hostname: mlflow
     restart: unless-stopped
     env_file:
       - .env
@@ -32,11 +33,127 @@ services:
       mlflow server
       --host 0.0.0.0
       --port 5000
+      --allowed-hosts '*'
       --backend-store-uri postgresql+psycopg2://${MLFLOW_DB_USER:-mlflow}:${MLFLOW_DB_PASSWORD:-mlflow}@mlflow-db:5432/${MLFLOW_DB_NAME:-mlflow}
       --artifacts-destination s3://${MLFLOW_BUCKET}/mlflow-artifacts
       --serve-artifacts"
     ports:
       - "2000:5000"
 
+  db:
+    hostname: postgres
+    image: pgvector/pgvector:pg17
+    restart: always
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 1s
+      timeout: 5s
+      retries: 10
+    expose:
+      - 5432
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    user: postgres
+
+  cache:
+    hostname: rediscache
+    image: redis
+    restart: always
+    expose:
+      - 6379
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+    volumes:
+      - cache_data:/data
+
+  web:
+    build:
+      dockerfile: ./Dockerfile
+    hostname: web
+    env_file:
+      - .env
+    environment:
+      - REDIS_ADDR=rediscache
+      - PGSQL_HOST=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_NAME=postgres
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - CELERY_BROKER_URL=redis://rediscache:6379
+      - CELERY_RESULT_BACKEND=redis://rediscache:6379
+      - CORPUS_UPLOAD_STORAGE=local
+      - CORPUS_IMPORT_DIR=/var/tmp/corpus_uploads
+      - USE_BERT=1
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    expose:
+      - 8000
+    command: >
+      sh -c "python run.py"
+    depends_on:
+      db:
+        condition: service_healthy
+      mlflow:
+        condition: service_started
+
+    volumes:
+      - corpus_uploads:/var/tmp/corpus_uploads
+
+  worker:
+    build:
+      dockerfile: ./Dockerfile
+
+    env_file:
+      - .env
+    environment:
+      - REDIS_ADDR=rediscache
+      - PGSQL_HOST=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_NAME=postgres
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - CELERY_BROKER_URL=redis://rediscache:6379
+      - CELERY_RESULT_BACKEND=redis://rediscache:6379
+      - CORPUS_UPLOAD_STORAGE=local
+      - CORPUS_IMPORT_DIR=/var/tmp/corpus_uploads
+
+    command: >
+      sh -c "celery -A app.core.workers.celery worker --loglevel=info --pool solo"    
+
+    volumes:
+      - corpus_uploads:/var/tmp/corpus_uploads
+
+    depends_on:
+      - web
+
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    command: npm run dev -- --host
+    expose:
+      - 3000
+    env_file:
+      - ./.env
+    environment:
+      - API_PROXY_TARGET=http://web:8000
+    tty: true
+    volumes:
+      - /srv/app/node_modules
+
+  nginx:
+    build: ./nginx
+    ports:
+      - 80:80
+    depends_on:
+      - web
+      - frontend
+      - db
+
 volumes:
   mlflow_db_data:
+  cache_data:
+  dbdata:
+  corpus_uploads:
