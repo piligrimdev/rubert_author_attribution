@@ -2,7 +2,7 @@ import asyncio
 import uuid
 from pathlib import Path
 from typing import Callable, Optional
-
+import structlog
 from celery import states as celery_states
 from fastapi import HTTPException
 
@@ -21,6 +21,7 @@ from .text_service import TextService
 
 from .corpus_upload_storage import CorpusUploadStorage
 
+logger = structlog.get_logger(__name__)
 
 def parse_author_name(full_name: str) -> tuple[str, str, str]:
     return full_name, "", ""
@@ -68,6 +69,8 @@ class CorpusImportService:
         user_obj = await self.user_service.get_user_by_id(user_id, session)
         is_admin = await self.user_service.is_user_admin(user_obj)
 
+        logger.debug("csv_parsing.parsing.is_user_admin", is_user_admin=is_admin, user_obj=user_obj)
+
         for processed, (_, row) in enumerate(df.iterrows(), start=1):
             try:
                 author_str = str(row["author"]).strip()
@@ -75,6 +78,7 @@ class CorpusImportService:
                 genre_col = str(row["source_type"]).strip()
 
                 if not all([author_str, text_content, genre_col]):
+                    logger.debug("csv_parsing.parsing.skipped_row_due_to_missing_colums", row_idx=processed)
                     skipped_empty += 1
                     continue
 
@@ -84,8 +88,10 @@ class CorpusImportService:
                         genre = await self.genre_service.get_or_create_entity(
                             genre_col, session=session
                         )
+                        logger.info("csv_parsing.parsing.admin_created_genre_from_csv", row_idx=processed)
                     else:
                         genre = await self.genre_service.get_by_name_entity(genre_col, session=session)
+                        logger.info("csv_parsing.parsing.user_got_genre_from_db", row_idx=processed)
                     genre_cache[genre_col] = genre
 
                 author = author_cache.get(author_str)
@@ -103,13 +109,20 @@ class CorpusImportService:
                     user_id=user_id,
                     session=session,
                 )
+                logger.info("csv_parsing.parsing.text_from_csv_added", row_idx=processed)
                 added += 1
-            except Exception:
+            except Exception as e:
+                logger.error("csv_parsing.parsing.error_on_processing_row", error=e)
                 errors += 1
             finally:
                 if progress_cb is not None:
                     progress_cb(processed, total)
 
+        logger.info("csv_parsing.parsing.finished",
+                    added=added,
+                    skipped_empty=skipped_empty,
+                    errors=errors
+        )
         return CorpusCsvImportResult(
             added=added,
             skipped_empty=skipped_empty,
@@ -123,6 +136,7 @@ class CorpusImportService:
         session,
         progress_cb: Optional[Callable[[int, int], None]] = None,
     ) -> CorpusCsvImportResult:
+        logger.debug("csv_parsing.import_from_file.reading_file_raw")
         raw = Path(file_path).read_bytes()
         df = self.parse_service.prepare_dataframe(raw)
         return await self.import_dataframe(
@@ -140,6 +154,7 @@ class CorpusImportService:
         progress_cb: Optional[Callable[[int, int], None]] = None,
     ) -> CorpusCsvImportResult:
         """Читает CSV из upload-хранилища (для запуска внутри Celery)."""
+        logger.debug("csv_parsing.import_from_file.reading_file_from_storage")
         raw = self.upload_storage.read(key)
         df = self.parse_service.prepare_dataframe(raw)
         return await self.import_dataframe(
@@ -162,42 +177,55 @@ class CorpusImportService:
         ``(user_id, key)``, opaque-ключ хранилища.
         """
         if self.on_import_csv is None:
+            logger.error("csv_parsing.start_import_csv_task.no_method_provided_error")
             raise HTTPException(
                 status_code=503,
-                detail="Импорт CSV не настроен: отсутствует обработчик задач",
+                detail="No method provided for .csv parsing",
             )
 
         try:
             self.parse_service.prepare_dataframe(raw)
         except CorpusCsvParseError as exc:
+            logger.error("csv_parsing.start_import_csv_task.prepare_error", error=exc)
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+        logger.debug("csv_parsing.start_import_csv_task.file_uploading_to_storage")
         key = self.upload_storage.put(raw)
+        logger.debug("csv_parsing.start_import_csv_task.file_uploaded_to_storage")
 
         try:
             task_id = await self.on_import_csv(str(user_id), key)
-        except Exception:
+            logger.info("csv_parsing.start_import_csv_task.csv_proccessing_task_created", task_id=task_id)
+        except Exception as e:
+            logger.error("csv_parsing.start_import_csv_task.prepare_error", error=e)
             self.upload_storage.delete(key)
+            logger.debug("csv_parsing.start_import_csv_task.file_deleted_from_storage")
             raise
 
         return StartCorpusImportTaskResponse(task_id=str(task_id))
 
     async def get_import_csv_result(self, task_id: str) -> CorpusImportTaskStatus:
         if self.async_result_fn is None:
+            logger.error("csv_parsing.get_import_csv_result.no_task_status_checking_method_provided",)
             raise HTTPException(
                 status_code=503,
-                detail="Получение статуса задачи недоступно: backend не настроен",
+                detail="No task status checking method provided",
             )
 
         result = self.async_result_fn(task_id)
         if result is None:
+            logger.error("csv_parsing.get_import_csv_result.task_not_found", task_id=task_id)
             raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+
 
         status = getattr(result, "status", None) or getattr(result, "state", None)
         info = getattr(result, "info", None)
         payload = getattr(result, "result", None)
 
+        logger.debug("csv_parsing.get_import_csv_result.task_has_status", task_id=task_id, status=status)
+
         if status == celery_states.SUCCESS:
+            logger.debug("csv_parsing.get_import_csv_result.task_completed", task_id=task_id)
             return CorpusImportTaskStatus(
                 task_id=str(task_id),
                 status=status,
@@ -206,6 +234,7 @@ class CorpusImportService:
             )
 
         if status == celery_states.FAILURE:
+            logger.error("csv_parsing.get_import_csv_result.task_failed", task_id=task_id)
             return CorpusImportTaskStatus(
                 task_id=str(task_id),
                 status=status,
@@ -221,6 +250,7 @@ class CorpusImportService:
             try:
                 progress = float(meta["percent"])
             except (TypeError, ValueError):
+                logger.error("csv_parsing.get_import_csv_result.failed_to_fetch_progress", task_id=task_id)
                 progress = None
 
         return CorpusImportTaskStatus(
@@ -237,6 +267,7 @@ def corpus_csv_import_celery(self, user_id: str, key: str) -> dict:
     ``key`` — opaque-ключ ``upload_storage`` (имя файла в shared volume для
     dev, либо S3-ключ для prod). Воркер сам читает CSV и удаляет за собой.
     """
+    logger.debug("csv_parsing.import_task_started")
     from ..core.database import database
     from ..core.services import corpus_import_service as _service
 
@@ -260,13 +291,17 @@ def corpus_csv_import_celery(self, user_id: str, key: str) -> dict:
 
     try:
         result = asyncio.run(_run())
-        return result.model_dump()
+        result =  result.model_dump()
+        logger.debug("csv_parsing.import_task_finished")
+        return result
     finally:
         _service.upload_storage.delete(key)
+        logger.debug("csv_parsing.file_deleted_from_storage")
 
 
 async def corpus_csv_import(user_id: str, key: str) -> str:
     """Делегат в Celery — структурно совпадает с ``metrics_compute``."""
+    logger.debug("csv_parsing.task_delayed")
     task = corpus_csv_import_celery.delay(user_id, key)
     return task.id
 
@@ -282,6 +317,7 @@ def create_mock_async_corpus_csv_import(mock_cache: MockTaskCache) -> Callable:
 
         task_uuid = uuid.uuid4()
 
+        logger.debug("csv_parsing.mock_import_task_started")
         try:
             uid = uuid.UUID(user_id)
             with database.get_sync_session() as session:
@@ -303,8 +339,10 @@ def create_mock_async_corpus_csv_import(mock_cache: MockTaskCache) -> Callable:
             )
         finally:
             _service.upload_storage.delete(key)
+            logger.debug("csv_parsing.file_deleted_from_storage")
 
         mock_cache.put(task_uuid, task_data)
+        logger.debug("csv_parsing.mock_import_task_finished")
         return task_uuid
 
     return mock_corpus_csv_import

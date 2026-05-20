@@ -1,5 +1,5 @@
 from typing import List
-
+import structlog
 from fastapi import HTTPException
 from pydantic import ValidationError
 from sqlalchemy import and_
@@ -11,6 +11,7 @@ from ..entities import User, Author
 
 from ..schemas.requests import CreateAuthorForm, GetAuthorForm
 
+logger = structlog.get_logger(__name__)
 
 class AuthorService:
     def __init__(
@@ -35,10 +36,15 @@ class AuthorService:
                 name, surname, last_name, session=session
             )
         except NotFoundInDB:
+            logger.debug("authors.create_entity.not_found", name=name, surname=surname,
+                        last_name=last_name)
             user = await self.user_service.get_user_by_id(user_id, session=session)
-            return await self.crud.create(
+            result =  await self.crud.create(
                 name, surname, last_name, user, session
             )
+            logger.info("authors.create_entity.created_object", name=name, surname=surname,
+                        last_name=last_name, user_id=user_id)
+            return result
         
     async def _get_admins_and_requester(self, user_id, session) -> List[User]:
         admin_users = await self.user_service.get_admin_users(session=session)
@@ -62,6 +68,7 @@ class AuthorService:
                 session=session,
             )
         except AlreadyExistsInDB:
+            logger.error("authors.create.author_already_exists", name=form.name, surname=form.surname, last_name=form.last_name)
             raise HTTPException(400, "Author with specified name, surname and last name already exists")
 
 
@@ -74,8 +81,12 @@ class AuthorService:
             user,
             session,
         )
+        logger.info("authors.create.created_object", name=form.name, surname=form.surname,
+                     last_name=form.last_name)
 
         provided_id = user.id if not await self.user_service.is_user_admin(user) else None
+
+        logger.debug("authors.create.provided_id", provided_id=provided_id)
 
         return GetAuthorForm(
             name=created_author.name,
@@ -92,9 +103,11 @@ class AuthorService:
 
         if await self.user_service.is_user_admin(user):
             data = await self.crud.list_all(session)
+            logger.debug("authors.list_available.user_is_admin", user_id=user_id)
         else:
             admin_users = await self._get_admins_and_requester(user_id, session)
             data = await self.crud.list_all_available(admin_users, session=session)
+            logger.debug("authors.list_available.user_is_not_admin", user_id=user_id)
 
         result = []
 
@@ -119,6 +132,7 @@ class AuthorService:
 
     async def list_generative_enabled(self, user_id, session):
         """Authors whose style can be used for text generation (subset of list_available)."""
+        logger.warning("authors.list_generative_enabled.not_implemented_method_call", user_id=user_id)
         return await self.list_available(user_id=user_id, session=session)
 
     async def get_by_full_name(self, form: GetAuthorForm, user_id, session):

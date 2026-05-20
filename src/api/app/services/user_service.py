@@ -1,4 +1,5 @@
 from typing import List
+import structlog
 
 from ..crud.entities.user import UserCRUDDatabaseProvider, RoleCRUDDatabaseProvider
 from ..entities.user import User
@@ -7,6 +8,7 @@ from ..schemas.requests import RegisterForm, LoginForm
 
 from ..utils.auth import hash_password, check_password, create_access_token, create_refresh_token
 
+logger = structlog.get_logger(__name__)
 
 class UserService:
     def __init__(
@@ -35,17 +37,21 @@ class UserService:
             session=session,
         )
 
+        logger.info("auth.register.user_created", form.username)
+
         return create_access_token(user.id), create_refresh_token(user.id)
 
     async def login(self, form: LoginForm, session) -> tuple[str, str]:
         try:
             user = await self.crud.get_by_username(form.username, session=session)
         except ValueError:
+            logger.info("auth.login.no_user_founded", form.username)
             raise ValueError("Invalid username or password")
 
         try:
             check_password(form.password, user.password_hash)
         except ValueError:
+            logger.info("auth.login.invalid_password", form.username)
             raise ValueError("Invalid username or password")
 
         return create_access_token(user.id), create_refresh_token(user.id)

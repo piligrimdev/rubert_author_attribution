@@ -1,6 +1,6 @@
 import uuid
 from typing import List
-
+import structlog
 from fastapi import APIRouter
 
 from ..core.dependencies import CurrentUserUUID, session_dependency
@@ -10,9 +10,12 @@ from ..schemas.responses import TextItemResponse
 
 texts_routes = APIRouter(prefix="/texts", tags=["texts"])
 
+log = structlog.get_logger(__name__)
+
 
 @texts_routes.get("", response_model=List[TextItemResponse])
 async def list_available_texts(user_id: CurrentUserUUID, session: session_dependency):
+    log.debug("texts.list_text_requested", user_id=str(user_id))
     return await text_service.list_available(user_id=user_id, session=session)
 
 
@@ -22,6 +25,7 @@ async def get_texts_by_author(
     user_id: CurrentUserUUID,
     session: session_dependency,
 ):
+    log.debug("texts.text_by_author_requested", author_id=author_id, user_id=str(user_id))
     return await text_service.get_texts_of_author(author_id, user_id, session)
 
 
@@ -31,4 +35,5 @@ async def add_text(
     user_id: CurrentUserUUID,
     session: session_dependency,
 ):
+    log.debug("texts.add_text_requested", user_id=str(user_id))
     return await text_service.add_text(form, user_id, session)

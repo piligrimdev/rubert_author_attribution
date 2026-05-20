@@ -1,11 +1,12 @@
 from typing import List
-
+import structlog
 from ..crud.entities.genre import GenreCRUDDatabaseProvider
 from ..crud.abstract_crud_db_provider import NotFoundInDB
 from ..entities.genre import Genre
 from ..schemas.requests import CreateGenreForm
 from ..schemas.responses import GenreResponse
 
+logger = structlog.get_logger(__name__)
 
 class GenreService:
     def __init__(
@@ -55,17 +56,24 @@ class GenreService:
         try:
             return await self.get_by_name(name, session=session)
         except NotFoundInDB:
-            return await self.add_genre(
+            logger.debug('genre.get_or_create.not_found', name=name)
+            result =  await self.add_genre(
                 CreateGenreForm(name=name),
                 session=session
             )
+            logger.info('genre.get_or_create.created', name=name)
+            return result
 
     async def get_or_create_entity(self, name: str, session) -> Genre:
         # вернет orm, а не схему, чтобы далее работать с бд
         try:
             return await self.crud.get_by_name(name, session=session)
         except NotFoundInDB:
-            return await self.crud.create(name, session=session)
+            logger.debug('genre.get_or_create_entity.not_found', name=name)
+            logger.info('genre.get_or_create_entity.created', name=name)
+            result =  await self.crud.create(name, session=session)
+            logger.info('genre.get_or_create_entity.created', name=name)
+            return result
 
 
     async def add_genre(
@@ -76,6 +84,7 @@ class GenreService:
             name=form.name,
             session=session,
         )
+        logger.info('genre.get_or_create_entity.created', name=form.name)
 
         return GenreResponse(
             id=genre_obj.id,

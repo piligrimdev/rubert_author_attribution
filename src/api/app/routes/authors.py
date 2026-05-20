@@ -33,6 +33,7 @@ async def get_authors(user_id: CurrentUserUUID, session: session_dependency):
 async def get_generative_enabled_authors(
     user_id: CurrentUserUUID, session: session_dependency
 ):
+    log.debug("authors.list_generative_enables_requested", user_id=str(user_id))
     return await author_service.list_generative_enabled(
         user_id=user_id, session=session
     )
@@ -41,12 +42,15 @@ async def get_generative_enabled_authors(
 async def create_author(
     form: CreateAuthorForm, user_id: CurrentUserUUID, session: session_dependency
 ) -> None:
+
+    log.debug("authors.create_requested", user_id=str(user_id))
     return await author_service.create(form, user_id, session)
 
 @authors_routes.post("/compute_metrics")
 async def start_compute_metrics_task_endpoint(
     form: GetMetricsRequest, user_id: CurrentUserUUID, session: session_dependency
 ) -> None:
+    log.debug("authors.metrics_computing_requested", user_id=str(user_id))
     return await metrics_service.start_compute_metrics_task(form, user_id, session)
 
 
@@ -54,6 +58,7 @@ async def start_compute_metrics_task_endpoint(
 async def get_compute_metrics_task_results_endpoint(
     task_id: str, user_id: CurrentUserUUID
 ) -> None:
+    log.debug("authors.metrics_computing_task_status_requested", user_id=str(user_id))
     return await metrics_service.get_compute_metrics_results(task_id)
 
 
@@ -62,6 +67,7 @@ async def start_corpus_csv_import_endpoint(
     user_id: CurrentUserUUID,
     file: csv_file_dep,
 ) -> StartCorpusImportTaskResponse:
+    log.debug("authors.upload_csv_requested", user_id=str(user_id))
     raw = await file.read()
     return await corpus_import_service.start_import_csv_task(
         raw=raw,
@@ -73,4 +79,5 @@ async def start_corpus_csv_import_endpoint(
 async def get_corpus_csv_import_status_endpoint(
     task_id: str, user_id: CurrentUserUUID
 ) -> CorpusImportTaskStatus:
+    log.debug("authors.upload_csv_task_status_requested", user_id=str(user_id))
     return await corpus_import_service.get_import_csv_result(task_id)

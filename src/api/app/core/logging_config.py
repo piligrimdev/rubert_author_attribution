@@ -25,7 +25,7 @@ def default_log_dir() -> Path:
     if raw:
         return Path(raw).expanduser().resolve()
     # src/api/app/core -> app root = parents[3]
-    _REPO_ROOT = Path(__file__).resolve().parents[3]
+    _REPO_ROOT = Path(__file__).resolve().parents[4]
     return _REPO_ROOT / "logs"
 
 

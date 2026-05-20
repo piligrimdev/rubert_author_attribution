@@ -15,6 +15,9 @@ import spacy
 import textstat
 from lexicalrichness import LexicalRichness
 
+import structlog
+logger = structlog.get_logger(__name__)
+
 for pkg in ['punkt', 'punkt_tab']:
     nltk.download(pkg, quiet=True)
 
@@ -602,7 +605,7 @@ def compute_author_metrics(
     if author_df.empty:
         raise ValueError(f"Автор '{author_name}' не найден в колонке '{author_col}'")
 
-    print(f"Обрабатываю {len(author_df)} текстов автора: {author_name}")
+    logger.info("text_metrics.processing.started", author_name=author_name, texts_count=len(author_df))
 
     all_metrics = []
     for idx, row in author_df.iterrows():
@@ -610,7 +613,7 @@ def compute_author_metrics(
             m = compute_text_metrics(row[text_col])
             all_metrics.append(m)
         except Exception as e:
-            print(f"  Ошибка в тексте {idx}: {e}")
+            logger.error("text_metrics.processing.error_on_text_entry", text_inx=idx, error=e)
 
     if not all_metrics:
         return {}
@@ -633,7 +636,9 @@ def compute_author_metrics(
         result[f"{col}_q25"]    = round(float(vals.quantile(0.25)), 4)
         result[f"{col}_q75"]    = round(float(vals.quantile(0.75)), 4)
 
-    return _sanitize_for_json(result)
+    result = _sanitize_for_json(result)
+    logger.info("text_metrics.processing.finished")
+    return result
 
 
 

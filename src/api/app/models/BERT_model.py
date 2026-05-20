@@ -1,9 +1,13 @@
+import structlog
 import torch
 from torch import nn, autocast
 import torch.nn.functional as F
 from transformers import AutoModel, AutoTokenizer
 
 from .abstract_model_provider import AbstractModelProvider
+
+logger = structlog.get_logger(__name__)
+
 
 class BertModelProvider(AbstractModelProvider):
     is_embedder = True
@@ -32,6 +36,7 @@ class BertModelProvider(AbstractModelProvider):
 
     def generate_embedding(self, text: str) -> list:
         if not self.model:
+            logger.warning("bert.embedding.no_model_provided")
             return [0]*self.max_emb_len
 
         with torch.no_grad():
@@ -45,4 +50,6 @@ class BertModelProvider(AbstractModelProvider):
                     enc['input_ids'],
                     enc['attention_mask']
                 ).float().cpu().numpy()
-                return embs.tolist()
+                result = embs.tolist()
+                logger.info("bert.embedding.generated_embedding")
+                return result

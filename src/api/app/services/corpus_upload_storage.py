@@ -2,7 +2,9 @@ import os
 import uuid
 from pathlib import Path
 from typing import Protocol
+import structlog
 
+logger = structlog.get_logger(__name__)
 
 class CorpusUploadStorage(Protocol):
     """Нужно для общения файлами между api и celery"""
@@ -17,6 +19,7 @@ class LocalCorpusUploadStorage:
     def __init__(self, base_dir: str):
         self.base_dir = base_dir
         os.makedirs(self.base_dir, exist_ok=True)
+        logger.debug("csv_local_storage.init.created_directory", base_dir=self.base_dir)
 
     def _path(self, key: str) -> Path:
         return Path(self.base_dir) / key
@@ -24,6 +27,7 @@ class LocalCorpusUploadStorage:
     def put(self, raw: bytes) -> str:
         key = f"corpus_import_{uuid.uuid4().hex}.csv"
         self._path(key).write_bytes(raw)
+        logger.debug("csv_local_storage.put.saved")
         return key
 
     def read(self, key: str) -> bytes:
@@ -32,7 +36,9 @@ class LocalCorpusUploadStorage:
     def delete(self, key: str) -> None:
         try:
             self._path(key).unlink(missing_ok=True)
-        except OSError:
+            logger.debug("csv_local_storage.delete.deleted")
+        except OSError as err:
+            logger.error("csv_local_storage.delete.error", error=err)
             pass
 
 
