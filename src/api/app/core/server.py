@@ -7,6 +7,9 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.routes import router, admin_routes, AdminAuthBackend
 from .database import database
+from .logging_config import UVICORN_LOG_CONFIG
+from .metrics import setup_http_metrics
+from .request_id_middleware import RequestIdMiddleware
 
 
 class API:
@@ -19,17 +22,26 @@ class API:
         self.api = FastAPI(
             docs_url=None
         )  # to pass description parameters e.t.c
+        setup_http_metrics(self.api)
         self.api.add_middleware(
             SessionMiddleware,
             secret_key="change-me",
         )
+        self.api.add_middleware(RequestIdMiddleware)
         self.admin = Admin(
             self.api,
             engine,
             authentication_backend=AdminAuthBackend(database.session),
         )
 
-        config = Config(self.api, host, port)
+        access_log = os.getenv("LOG_UVICORN_ACCESS", "1") == "1"
+        config = Config(
+            self.api,
+            host,
+            port,
+            log_config=UVICORN_LOG_CONFIG,
+            access_log=access_log,
+        )
         self.server = Server(config)
 
     def setup(self, router, admin_routes):

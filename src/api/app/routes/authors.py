@@ -1,5 +1,6 @@
 from typing import Annotated
 
+import structlog
 from fastapi import APIRouter, Depends, Form, UploadFile
 
 from ..core.dependencies import (
@@ -19,11 +20,13 @@ from ..schemas.responses import (
 )
 
 authors_routes = APIRouter(prefix="/authors", tags=["authors"])
+log = structlog.get_logger(__name__)
 
 csv_file_dep = Annotated[UploadFile, Depends(allowed_extensions("csv"))]
 
 @authors_routes.get("")
 async def get_authors(user_id: CurrentUserUUID, session: session_dependency):
+    log.debug("authors.list_requested", user_id=str(user_id))
     return await author_service.list_available(user_id=user_id, session=session)
 
 @authors_routes.get("/generative_enabled")

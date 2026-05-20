@@ -37,4 +37,7 @@ CLAUDE.md
 
 .secrets
 
-
+logs/*.jsonl
+logs/*.jsonl.*
+src/logs/*.jsonl
+src/logs/*.jsonl*
