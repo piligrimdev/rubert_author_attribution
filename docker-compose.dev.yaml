@@ -23,6 +23,8 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      - AWS_DEFAULT_REGION=ru-central1
     depends_on:
       mlflow-db:
         condition: service_healthy
@@ -34,6 +36,7 @@ services:
       --host 0.0.0.0
       --port 5000
       --allowed-hosts '*'
+      --cors-allowed-origins '*'
       --backend-store-uri postgresql+psycopg2://${MLFLOW_DB_USER:-mlflow}:${MLFLOW_DB_PASSWORD:-mlflow}@mlflow-db:5432/${MLFLOW_DB_NAME:-mlflow}
       --artifacts-destination s3://${MLFLOW_BUCKET}/mlflow-artifacts
       --serve-artifacts"
@@ -89,6 +92,7 @@ services:
       - CORPUS_IMPORT_DIR=/var/tmp/corpus_uploads
       - USE_BERT=1
       - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - MLFLOW_REGISTRY_URI=http://mlflow:5000
       - LOG_JSON=1
       - METRICS_ENABLED=1
       - LOG_DIR=/var/log/app
@@ -130,7 +134,9 @@ services:
       - LOG_JSON=1
       - METRICS_ENABLED=1
       - CELERY_METRICS_PORT=8001
-
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - USE_BERT=1
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/api_bd
     command: >
       sh -c "celery -A app.core.workers.celery worker --loglevel=info --pool solo"    
 
@@ -221,7 +227,7 @@ services:
     env_file:
       - ./.env
     environment:
-      - API_PROXY_TARGET=http://web:8000
+      - API_PROXY_TARGET=http://web:8000/api
     tty: true
     volumes:
       - /srv/app/node_modules

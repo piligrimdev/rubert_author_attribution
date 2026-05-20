@@ -31,9 +31,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 mlflow_tracking_uri = os.getenv("MLFLOW_TRACKING_URI")
+mlflow_registry_uri = os.getenv("MLFLOW_REGISTRY_URI", mlflow_tracking_uri)
 mlflow.set_tracking_uri(mlflow_tracking_uri)
+mlflow.set_registry_uri(mlflow_registry_uri)
 
-mlflow_client = MlflowClient()
+mlflow_client = MlflowClient(
+    tracking_uri=mlflow_tracking_uri,
+    registry_uri=mlflow_registry_uri,
+)
 
 use_bert = int(os.getenv("USE_BERT", 0))
 model=None

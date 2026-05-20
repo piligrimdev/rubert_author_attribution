@@ -8,7 +8,7 @@ from .authors import authors_routes
 from .texts import texts_routes
 from .generative import generative_router
 
-router = APIRouter()
+router = APIRouter(prefix='/api')
 
 def init_docs_router(docs_file_path: str = "static/docs/docs.html") -> APIRouter:
     doc_router = APIRouter()
