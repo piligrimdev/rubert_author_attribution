@@ -151,12 +151,14 @@ SYSTEM_PROMPT = (
     "сохранив смысл, но изменив манеру изложения, лексику и интонацию."
 )
 
-# generative_model = QwenAdaptedModelProvider(
-#     'Qwen/Qwen2.5-7B-Instruct',
-#     '/Users/pgdev/PycharmProjects/diplomm/models/qwn',
-#     SYSTEM_PROMPT
-# )
+use_qwen = int(os.getenv("USE_QWEN", 0))
+generative_model = None
+if use_qwen:
+    generative_model = QwenAdaptedModelProvider(
+        base_model_name=os.getenv("QWEN_BASE_MODEL", "Qwen/Qwen2.5-7B-Instruct"),
+        registered_name=os.getenv("MLFLOW_QWEN_MODEL_NAME", "qwen_lora_stylizer"),
+        alias=os.getenv("MLFLOW_QWEN_MODEL_ALIAS", "prod"),
+        system_prompt=SYSTEM_PROMPT,
+    )
 
-generative_service = GenerativeService(
-    None
-)
+generative_service = GenerativeService(generative_model)

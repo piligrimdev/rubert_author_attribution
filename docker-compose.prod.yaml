@@ -1,0 +1,287 @@
+x-api-env: &api-env
+  REDIS_ADDR: rediscache
+  PGSQL_HOST: postgres
+  POSTGRES_USER: ${POSTGRES_USER:-postgres}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+  POSTGRES_NAME: ${POSTGRES_NAME:-api_bd}
+  DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_NAME:-api_bd}
+  ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+  ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme}
+  API_HOST: 0.0.0.0
+  API_PORT: "8080"
+  CELERY_BROKER_URL: redis://rediscache:6379
+  CELERY_RESULT_BACKEND: redis://rediscache:6379
+  CORPUS_UPLOAD_STORAGE: local
+  CORPUS_IMPORT_DIR: /var/tmp/corpus_uploads
+  USE_BERT: "${USE_BERT:-1}"
+  USE_FASTTEXT: "${USE_FASTTEXT:-0}"
+  MLFLOW_BERT_MODEL_NAME: ${MLFLOW_BERT_MODEL_NAME:-}
+  MLFLOW_BERT_MODEL_TAG: ${MLFLOW_BERT_MODEL_TAG:-}
+  TOKENIZER_NAME: ${TOKENIZER_NAME:-}
+  BERT_FILE_PATH: ${BERT_FILE_PATH:-}
+  AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+  AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+  MLFLOW_BUCKET: ${MLFLOW_BUCKET:-}
+  MLFLOW_S3_ENDPOINT_URL: ${MLFLOW_S3_ENDPOINT_URL:-https://storage.yandexcloud.net}
+  MLFLOW_TRACKING_URI: http://mlflow:5000
+  MLFLOW_REGISTRY_URI: http://mlflow:5000
+  MLFLOW_TRACKING_USERNAME: ${MLFLOW_ADMIN_USERNAME:-admin}
+  MLFLOW_TRACKING_PASSWORD: ${MLFLOW_ADMIN_PASSWORD:-changeme}
+  LOG_JSON: "1"
+  METRICS_ENABLED: "1"
+  LOG_DIR: /var/log/app
+  PROD_ADDR: ${PROD_ADDR:-}
+
+services:
+  mlflow-db:
+    image: postgres:16-alpine
+    container_name: mlflow-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${MLFLOW_DB_USER:-mlflow}
+      POSTGRES_PASSWORD: ${MLFLOW_DB_PASSWORD:-mlflow}
+      POSTGRES_DB: ${MLFLOW_DB_NAME:-mlflow}
+    volumes:
+      - mlflow_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${MLFLOW_DB_USER:-mlflow}"]
+      interval: 5s
+      retries: 10
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.20.3
+    container_name: mlflow
+    hostname: mlflow
+    restart: unless-stopped
+    environment:
+      MLFLOW_AUTH_CONFIG_PATH: /etc/mlflow/auth.ini
+      MLFLOW_ADMIN_USERNAME: ${MLFLOW_ADMIN_USERNAME:-admin}
+      MLFLOW_ADMIN_PASSWORD: ${MLFLOW_ADMIN_PASSWORD:-changeme}
+      MLFLOW_DB_USER: ${MLFLOW_DB_USER:-mlflow}
+      MLFLOW_DB_PASSWORD: ${MLFLOW_DB_PASSWORD:-mlflow}
+      MLFLOW_DB_NAME: ${MLFLOW_DB_NAME:-mlflow}
+      MLFLOW_BUCKET: ${MLFLOW_BUCKET:?MLFLOW_BUCKET is required}
+      MLFLOW_S3_ENDPOINT_URL: ${MLFLOW_S3_ENDPOINT_URL:-https://storage.yandexcloud.net}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?AWS_ACCESS_KEY_ID is required}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?AWS_SECRET_ACCESS_KEY is required}
+      AWS_DEFAULT_REGION=ru-central1
+    depends_on:
+      mlflow-db:
+        condition: service_healthy
+    volumes:
+      - ./observability/mlflow_auth.ini:/etc/mlflow/auth.ini.template:ro
+      - mlflow_auth_data:/mlflow-auth
+    command: >
+      bash -c "
+      pip install --quiet psycopg2-binary boto3 &&
+      mkdir -p /mlflow-auth &&
+      sed -e \"s|MLFLOW_ADMIN_USERNAME_PLACEHOLDER|$$MLFLOW_ADMIN_USERNAME|g\"
+          -e \"s|MLFLOW_ADMIN_PASSWORD_PLACEHOLDER|$$MLFLOW_ADMIN_PASSWORD|g\"
+          /etc/mlflow/auth.ini.template > /etc/mlflow/auth.ini &&
+      mlflow server
+      --app-name basic-auth
+      --host 0.0.0.0
+      --port 5000
+      --allowed-hosts $${PROD_ADDR}
+      --cors-allowed-origins $${PROD_ADDR}
+      --backend-store-uri postgresql+psycopg2://$${MLFLOW_DB_USER:-mlflow}:$${MLFLOW_DB_PASSWORD:-mlflow}@mlflow-db:5432/$${MLFLOW_DB_NAME:-mlflow}
+      --artifacts-destination s3://$${MLFLOW_BUCKET}/mlflow-artifacts
+      --serve-artifacts"
+    ports:
+      - "${MLFLOW_PORT:-2000}:5000"
+
+  db:
+    hostname: postgres
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_NAME:-api_bd}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    expose:
+      - 5432
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+
+  cache:
+    hostname: rediscache
+    image: redis:7-alpine
+    restart: unless-stopped
+    expose:
+      - 6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 10
+    volumes:
+      - cache_data:/data
+
+  web:
+    image: ${YCR_REGISTRY:-cr.yandex/local}/rubert-api:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    hostname: web
+    restart: unless-stopped
+    environment:
+      <<: *api-env
+      SERVICE_NAME: api
+    expose:
+      - 8080
+    command: ["python", "run.py"]
+    depends_on:
+      db:
+        condition: service_healthy
+      mlflow:
+        condition: service_started
+    volumes:
+      - corpus_uploads:/var/tmp/corpus_uploads
+      - ./logs:/var/log/app
+
+  worker:
+    image: ${YCR_REGISTRY:-cr.yandex/local}/rubert-api:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: *api-env
+      SERVICE_NAME: celery
+      USE_QWEN: 0
+      CELERY_METRICS_PORT: "8001"
+    command:
+      [
+        "celery",
+        "-A",
+        "app.core.workers.celery",
+        "worker",
+        "--loglevel=info",
+        "--pool",
+        "solo",
+      ]
+    expose:
+      - 8001
+    volumes:
+      - corpus_uploads:/var/tmp/corpus_uploads
+      - ./logs:/var/log/app
+    depends_on:
+      cache:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+
+  frontend:
+    image: ${YCR_REGISTRY:-cr.yandex/local}/rubert-frontend:${IMAGE_TAG:-latest}
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile_prod
+    container_name: frontend
+    restart: unless-stopped
+    expose:
+      - 80
+
+  nginx:
+    image: ${YCR_REGISTRY:-cr.yandex/local}/rubert-nginx:${IMAGE_TAG:-latest}
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile_prod
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    depends_on:
+      web:
+        condition: service_started
+      frontend:
+        condition: service_started
+      grafana:
+        condition: service_started
+
+  loki:
+    image: grafana/loki:3.4.2
+    container_name: loki
+    restart: unless-stopped
+    expose:
+      - 3100
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - loki_data:/loki
+
+  promtail:
+    image: grafana/promtail:3.4.2
+    container_name: promtail
+    restart: unless-stopped
+    volumes:
+      - ./observability/promtail-config.yaml:/etc/promtail/config.yml:ro
+      - ./logs:/var/log/app:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    container_name: prometheus
+    restart: unless-stopped
+    expose:
+      - 9090
+    environment:
+      LOCAL_API_METRICS_TARGET: web:8080
+    volumes:
+      - ./observability/prometheus.yml.template:/etc/prometheus/prometheus.yml.template:ro
+      - prometheus_data:/prometheus
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        sed "s|__API_METRICS_TARGET__|$$LOCAL_API_METRICS_TARGET|g" \
+          /etc/prometheus/prometheus.yml.template > /tmp/prometheus.yml
+        exec prometheus \
+          --config.file=/tmp/prometheus.yml \
+          --storage.tsdb.path=/prometheus \
+          --web.enable-lifecycle
+
+  grafana:
+    image: grafana/grafana:11.5.2
+    container_name: grafana
+    restart: unless-stopped
+    expose:
+      - 3000
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:?GRAFANA_ADMIN_USER is required}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD is required}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_USERS_ALLOW_ORG_CREATE: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_AUTH_BASIC_ENABLED: "true"
+      GF_SECURITY_DISABLE_GRAVATAR: "true"
+      GF_SECURITY_COOKIE_SECURE: "false"
+      GF_SECURITY_COOKIE_SAMESITE: "lax"
+      GF_SERVER_ROOT_URL: "${GRAFANA_ROOT_URL:-http://localhost/grafana}"
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - loki
+      - prometheus
+
+volumes:
+  mlflow_db_data:
+  mlflow_auth_data:
+  cache_data:
+  dbdata:
+  corpus_uploads:
+  loki_data:
+  prometheus_data:
+  grafana_data:
