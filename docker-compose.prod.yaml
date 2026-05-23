@@ -23,8 +23,8 @@ x-api-env: &api-env
   AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
   MLFLOW_BUCKET: ${MLFLOW_BUCKET:-}
   MLFLOW_S3_ENDPOINT_URL: ${MLFLOW_S3_ENDPOINT_URL:-https://storage.yandexcloud.net}
-  MLFLOW_TRACKING_URI: http://mlflow:5000
-  MLFLOW_REGISTRY_URI: http://mlflow:5000
+  MLFLOW_TRACKING_URI: http://${MLFLOW_ADMIN_USERNAME}:${MLFLOW_ADMIN_PASSWORD}@mlflow:5000
+  MLFLOW_REGISTRY_URI: http://${MLFLOW_ADMIN_USERNAME}:${MLFLOW_ADMIN_PASSWORD}@mlflow:5000
   MLFLOW_TRACKING_USERNAME: ${MLFLOW_ADMIN_USERNAME:-admin}
   MLFLOW_TRACKING_PASSWORD: ${MLFLOW_ADMIN_PASSWORD:-changeme}
   LOG_JSON: "1"
@@ -41,8 +41,10 @@ services:
       POSTGRES_USER: ${MLFLOW_DB_USER:-mlflow}
       POSTGRES_PASSWORD: ${MLFLOW_DB_PASSWORD:-mlflow}
       POSTGRES_DB: ${MLFLOW_DB_NAME:-mlflow}
+      MLFLOW_AUTH_DB_NAME: ${MLFLOW_AUTH_DB_NAME:-mlflow_auth}
     volumes:
       - mlflow_db_data:/var/lib/postgresql/data
+      - ./observability/mlflow_db_init.sh:/docker-entrypoint-initdb.d/10-mlflow-auth-db.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${MLFLOW_DB_USER:-mlflow}"]
       interval: 5s
@@ -54,39 +56,46 @@ services:
     hostname: mlflow
     restart: unless-stopped
     environment:
-      MLFLOW_AUTH_CONFIG_PATH: /etc/mlflow/auth.ini
+      MLFLOW_AUTH_CONFIG_PATH: /tmp/auth.ini
       MLFLOW_ADMIN_USERNAME: ${MLFLOW_ADMIN_USERNAME:-admin}
       MLFLOW_ADMIN_PASSWORD: ${MLFLOW_ADMIN_PASSWORD:-changeme}
       MLFLOW_DB_USER: ${MLFLOW_DB_USER:-mlflow}
       MLFLOW_DB_PASSWORD: ${MLFLOW_DB_PASSWORD:-mlflow}
       MLFLOW_DB_NAME: ${MLFLOW_DB_NAME:-mlflow}
+      MLFLOW_AUTH_DB_NAME: ${MLFLOW_AUTH_DB_NAME:-mlflow_auth}
       MLFLOW_BUCKET: ${MLFLOW_BUCKET:?MLFLOW_BUCKET is required}
       MLFLOW_S3_ENDPOINT_URL: ${MLFLOW_S3_ENDPOINT_URL:-https://storage.yandexcloud.net}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?AWS_ACCESS_KEY_ID is required}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?AWS_SECRET_ACCESS_KEY is required}
-      AWS_DEFAULT_REGION=ru-central1
+      AWS_DEFAULT_REGION: ru-central1
+      PROD_ADDR: ${PROD_ADDR:-*}
     depends_on:
       mlflow-db:
         condition: service_healthy
-    volumes:
-      - ./observability/mlflow_auth.ini:/etc/mlflow/auth.ini.template:ro
-      - mlflow_auth_data:/mlflow-auth
-    command: >
-      bash -c "
-      pip install --quiet psycopg2-binary boto3 &&
-      mkdir -p /mlflow-auth &&
-      sed -e \"s|MLFLOW_ADMIN_USERNAME_PLACEHOLDER|$$MLFLOW_ADMIN_USERNAME|g\"
-          -e \"s|MLFLOW_ADMIN_PASSWORD_PLACEHOLDER|$$MLFLOW_ADMIN_PASSWORD|g\"
-          /etc/mlflow/auth.ini.template > /etc/mlflow/auth.ini &&
-      mlflow server
-      --app-name basic-auth
-      --host 0.0.0.0
-      --port 5000
-      --allowed-hosts $${PROD_ADDR}
-      --cors-allowed-origins $${PROD_ADDR}
-      --backend-store-uri postgresql+psycopg2://$${MLFLOW_DB_USER:-mlflow}:$${MLFLOW_DB_PASSWORD:-mlflow}@mlflow-db:5432/$${MLFLOW_DB_NAME:-mlflow}
-      --artifacts-destination s3://$${MLFLOW_BUCKET}/mlflow-artifacts
-      --serve-artifacts"
+    command:
+      - bash
+      - -ceu
+      - |
+        pip install --quiet psycopg2-binary boto3 mlflow[auth]
+
+        cat > /tmp/auth.ini <<EOF
+        [mlflow]
+        default_permission = READ
+        database_uri = sqlite:////mlflow-auth/auth.db
+        admin_username = $${MLFLOW_ADMIN_USERNAME}
+        admin_password = $${MLFLOW_ADMIN_PASSWORD}
+        authorization_function = mlflow.server.auth:authenticate_request_basic_auth
+        EOF
+
+        exec mlflow server \
+          --app-name basic-auth \
+          --host 0.0.0.0 \
+          --port 5000 \
+          --allowed-hosts "$${PROD_ADDR}" \
+          --cors-allowed-origins "$${PROD_ADDR}" \
+          --backend-store-uri "postgresql+psycopg2://$${MLFLOW_DB_USER:-mflow}:$${MLFLOW_DB_PASSWORD:-mflow}@mlflow-db:5432/$${MLFLOW_DB_NAME:-mflow}" \
+          --artifacts-destination "s3://$${MLFLOW_BUCKET}/mlflow-artifacts" \
+          --serve-artifacts
     ports:
       - "${MLFLOW_PORT:-2000}:5000"
 
@@ -110,29 +119,22 @@ services:
 
   cache:
     hostname: rediscache
-    image: redis:7-alpine
+    image: redis
     restart: unless-stopped
     expose:
       - 6379
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
       interval: 5s
       retries: 10
     volumes:
       - cache_data:/data
 
   web:
-    image: ${YCR_REGISTRY:-cr.yandex/local}/rubert-api:${IMAGE_TAG:-latest}
+    image: ${YCR_REGISTRY:-cr.yandex/local}/web:${IMAGE_TAG:-latest}
     build:
       context: .
-      dockerfile: ./Dockerfile
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
+      dockerfile: ./Dockerfile.gpu
     hostname: web
     restart: unless-stopped
     environment:
@@ -151,10 +153,10 @@ services:
       - ./logs:/var/log/app
 
   worker:
-    image: ${YCR_REGISTRY:-cr.yandex/local}/rubert-api:${IMAGE_TAG:-latest}
+    image: ${YCR_REGISTRY:-cr.yandex/local}/web:${IMAGE_TAG:-latest}
     build:
       context: .
-      dockerfile: ./Dockerfile
+      dockerfile: ./Dockerfile.gpu
     restart: unless-stopped
     environment:
       <<: *api-env
@@ -183,7 +185,7 @@ services:
         condition: service_healthy
 
   frontend:
-    image: ${YCR_REGISTRY:-cr.yandex/local}/rubert-frontend:${IMAGE_TAG:-latest}
+    image: ${YCR_REGISTRY:-cr.yandex/local}/frontend:${IMAGE_TAG:-latest}
     build:
       context: ./frontend
       dockerfile: Dockerfile_prod
@@ -193,7 +195,7 @@ services:
       - 80
 
   nginx:
-    image: ${YCR_REGISTRY:-cr.yandex/local}/rubert-nginx:${IMAGE_TAG:-latest}
+    image: ${YCR_REGISTRY:-cr.yandex/local}/nginx:${IMAGE_TAG:-latest}
     build:
       context: ./nginx
       dockerfile: Dockerfile_prod
@@ -278,7 +280,6 @@ services:
 
 volumes:
   mlflow_db_data:
-  mlflow_auth_data:
   cache_data:
   dbdata:
   corpus_uploads:
