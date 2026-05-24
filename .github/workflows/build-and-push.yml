@@ -3,7 +3,7 @@ name: Build and push to Yandex Container Registry
 on:
   push:
     branches:
-      - main
+      - master
     tags:
       - "v*"
   workflow_dispatch:
