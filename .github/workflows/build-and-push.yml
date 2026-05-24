@@ -32,13 +32,13 @@ jobs:
       fail-fast: false
       matrix:
         image:
-          - name: rubert-api
+          - name: web
             context: .
-            dockerfile: Dockerfile.gpu
-          - name: rubert-frontend
+            dockerfile: Dockerfile
+          - name: frontend
             context: ./frontend
             dockerfile: frontend/Dockerfile_prod
-          - name: rubert-nginx
+          - name: nginx
             context: ./nginx
             dockerfile: nginx/Dockerfile_prod
 
@@ -58,9 +58,8 @@ jobs:
           if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
             TAGS="${TAGS},${REGISTRY_PATH}:${GITHUB_REF_NAME}"
             TAGS="${TAGS},${REGISTRY_PATH}:latest"
-          elif [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+          elif [[ "${GITHUB_REF}" == "refs/heads/master" ]]; then
             TAGS="${TAGS},${REGISTRY_PATH}:latest"
-            TAGS="${TAGS},${REGISTRY_PATH}:main"
           else
             TAGS="${TAGS},${REGISTRY_PATH}:${REF_NAME}"
           fi
