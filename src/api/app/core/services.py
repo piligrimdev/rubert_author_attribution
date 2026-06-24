@@ -23,6 +23,7 @@ from ..services.user_service import UserService
 from ..services.author_service import AuthorService
 from ..services.text_service import TextService
 from ..services.attribute_service import AttributeService
+from ..core.metrics import get_active_model_name
 from ..services.metrics_service import *
 
 
@@ -41,8 +42,9 @@ mlflow_client = MlflowClient(
 )
 
 use_bert = int(os.getenv("USE_BERT", 0))
-model=None
+use_fasttext = int(os.getenv("USE_FASTTEXT", 0))
 model = None
+
 if use_bert:
     bert_name = os.getenv("MLFLOW_BERT_MODEL_NAME", '')
     bert_tag = os.getenv("MLFLOW_BERT_MODEL_TAG", '')
@@ -56,6 +58,20 @@ if use_bert:
             bert_file_path,
             bert_tokenizer_name
         )
+elif use_fasttext:
+    from ..models.fasttext_model import FasttextModelProvider
+
+    import glob as _glob
+    fasttext_name = os.getenv("MLFLOW_FASTTEXT_MODEL_NAME", "fasttext_classifier")
+    fasttext_alias = os.getenv("MLFLOW_FASTTEXT_MODEL_ALIAS", "prod")
+    local_dir = mlflow.artifacts.download_artifacts(
+        artifact_uri=f"models:/{fasttext_name}@{fasttext_alias}",
+        dst_path="/tmp/mlflow_fasttext",
+    )
+    bin_files = _glob.glob(os.path.join(local_dir, "**/*.bin"), recursive=True)
+    if not bin_files:
+        raise FileNotFoundError(f"No .bin file found in MLflow artifact for {fasttext_name}@{fasttext_alias}")
+    model = FasttextModelProvider(bin_files[0])
 else:
     model = MockModelProvider()
 
@@ -88,7 +104,12 @@ text_service = TextService(
     model,
 )
 
-attribute_service = AttributeService(model, text_service, votes_with_sim_threshold)
+attribute_service = AttributeService(
+    model,
+    text_service,
+    votes_with_sim_threshold,
+    model_name=get_active_model_name(),
+)
 
 corpus_csv_parse_service = CorpusCsvParseService()
 

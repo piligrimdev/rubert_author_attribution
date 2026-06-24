@@ -78,7 +78,7 @@ class AdminAuthBackend(AuthenticationBackend):
 class UserAdmin(ModelView, model=User):
     name = "User"
     name_plural = "Users"
-    column_list = [User.id, User.username, User.role_id]
+    column_list = [User.id, User.username, User.role]
     form_columns = ["username", "password_hash", "role"]
     form_args = {
         "password_hash": {
@@ -230,6 +230,15 @@ class TextAdmin(ModelView, model=Text):
     name = "Text"
     name_plural = "Texts"
     column_list = [Text.id, Text.text, Text.author, Text.genre, Text.provided_by]
+    column_details_list = [
+        Text.id,
+        Text.text,
+        Text.author,
+        Text.genre,
+        Text.provided_by,
+        Text.is_visible,
+    ]
+    column_export_exclude_list = [Text.embedding]
     form_columns = [Text.text, Text.author, Text.genre, Text.provided_by]
 
     async def insert_model(self, request: Request, data: dict) -> Text:
@@ -237,13 +246,15 @@ class TextAdmin(ModelView, model=Text):
             author = _resolve_related(session, Author, data["author"])
             genre = _resolve_related(session, Genre, data["genre"])
             provided_by = _resolve_related(session, User, data["provided_by"])
+
+
+
             result = session.execute(
                 insert(Text).values(
                     text=data["text"],
                     author_id=author.id,
                     genre_id=genre.id,
                     provided_by_user=provided_by.id,
-                    embedding=data["embedding"],
                 )
             )
             session.commit()
@@ -257,7 +268,6 @@ class TextAdmin(ModelView, model=Text):
                 raise ValueError("Text not found")
 
             model.text = data.get("text", model.text)
-            model.embedding = data.get("embedding", model.embedding)
 
             if data.get("author") is not None:
                 author = _resolve_related(session, Author, data["author"])
