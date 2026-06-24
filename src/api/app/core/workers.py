@@ -20,6 +20,7 @@ from .entities import *
 
 from ..services import corpus_import_service
 from ..services import metrics_service
+from ..services import embedding_compare_service
 
 from .metrics import connect_celery_signals
 

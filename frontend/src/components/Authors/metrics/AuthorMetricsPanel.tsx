@@ -31,10 +31,13 @@ import {
   type MetricQuartiles,
 } from "@/types/authorMetrics";
 import { useComputeAuthorMetricsPair } from "@/hooks/useAuthorMetrics";
+import { useEmbeddingCompare } from "@/hooks/useEmbeddingCompare";
+import { getEmbeddingCompareErrorMessage } from "@/utils/embeddingCompareError";
 import type { Author } from "@/types/author";
 import MetricBoxPlotSvg from "./MetricBoxPlotSvg";
 import MetricMeanMedianBars from "./MetricMeanMedianBars";
 import MetricMeanMedianCompareBars from "./MetricMeanMedianCompareBars";
+import AuthorEmbeddingUmapSection from "./AuthorEmbeddingUmapSection";
 
 type Props = {
   authorId: string;
@@ -325,6 +328,7 @@ export default function AuthorMetricsPanel({
   authorsForCompare,
 }: Props) {
   const mutation = useComputeAuthorMetricsPair();
+  const embeddingCompare = useEmbeddingCompare();
   const data = mutation.data?.primary;
   const secondary = mutation.data?.secondary;
   const [compareAuthor, setCompareAuthor] = useState<Author | null>(null);
@@ -334,11 +338,24 @@ export default function AuthorMetricsPanel({
     [authorsForCompare, authorId],
   );
 
+  const isComparing = Boolean(compareAuthor);
+  const isPending =
+    mutation.isPending || (isComparing && embeddingCompare.isPending);
+
   const handleCompute = () => {
     mutation.mutate({
       primaryId: authorId,
       compareId: compareAuthor?.id ?? null,
     });
+    if (compareAuthor) {
+      embeddingCompare.mutate({
+        author_id_1: authorId,
+        author_id_2: compareAuthor.id,
+        max_per_author: 50,
+      });
+    } else {
+      embeddingCompare.reset();
+    }
   };
 
   const primaryName = authorLabel(data, "Первый автор");
@@ -357,15 +374,18 @@ export default function AuthorMetricsPanel({
         показывает разброс по текстам: усы — минимум и максимум, прямоугольник — Q1–Q3, сплошная
         линия в ящике — медиана, пунктир — среднее; справа от графика — числовые подписи. При
         выборе второго автора ящики и сравнительные столбцы показываются параллельно, ниже —
-        разница показателей.
+        разница показателей и UMAP-проекция эмбеддингов обоих авторов.
       </Typography>
 
       <Stack spacing={2} alignItems="stretch">
         {compareOptions.length > 0 && (
-          <Autocomplete
+            <Autocomplete
             options={compareOptions}
             value={compareAuthor}
-            onChange={(_, v) => setCompareAuthor(v)}
+            onChange={(_, v) => {
+              setCompareAuthor(v);
+              embeddingCompare.reset();
+            }}
             getOptionLabel={(o) => formatAuthorOption(o)}
             renderInput={(params) => (
               <TextField
@@ -381,9 +401,9 @@ export default function AuthorMetricsPanel({
           <Button
             variant="contained"
             onClick={handleCompute}
-            disabled={mutation.isPending || textCount === 0}
+            disabled={isPending || textCount === 0}
           >
-            {mutation.isPending
+            {isPending
               ? "Считаем…"
               : compareAuthor
                 ? "Рассчитать и сравнить"
@@ -406,6 +426,12 @@ export default function AuthorMetricsPanel({
       {mutation.isError && (
         <Alert severity="error" sx={{ mt: 2 }}>
           Не удалось получить метрики: {mutation.error.message}
+        </Alert>
+      )}
+
+      {embeddingCompare.isError && (
+        <Alert severity="error" sx={{ mt: 2 }}>
+          {getEmbeddingCompareErrorMessage(embeddingCompare.error)}
         </Alert>
       )}
 
@@ -520,6 +546,10 @@ export default function AuthorMetricsPanel({
               );
             })}
           </Grid>
+
+          {embeddingCompare.data && compareAuthor && (
+            <AuthorEmbeddingUmapSection data={embeddingCompare.data} />
+          )}
         </Stack>
       )}
     </Paper>

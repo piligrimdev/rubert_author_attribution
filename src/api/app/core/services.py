@@ -19,6 +19,7 @@ from ..services.author_generation_service import GenerativeService
 from ..services.genre_service import GenreService
 from ..services.corpus_csv_parse_service import CorpusCsvParseService
 from ..services.metrics_service import MetricsService
+from ..services.embedding_compare_service import EmbeddingCompareService
 from ..services.user_service import UserService
 from ..services.author_service import AuthorService
 from ..services.text_service import TextService
@@ -124,11 +125,17 @@ from ..services.corpus_import_service import CorpusImportService
 if use_celery:
     from celery.result import AsyncResult
     from ..services.metrics_service import metrics_compute
+    from ..services.embedding_compare_service import embedding_compare_compute
     from ..services.corpus_import_service import corpus_csv_import
 
     metrics_service = MetricsService(
         text_service,
         metrics_compute,
+        AsyncResult,
+    )
+    embedding_compare_service = EmbeddingCompareService(
+        text_service,
+        embedding_compare_compute,
         AsyncResult,
     )
     corpus_import_service = CorpusImportService(
@@ -144,16 +151,23 @@ if use_celery:
 else:
     from ..services.mock_worker_provider import create_mock_async_result, MockTaskCache
     from ..services.metrics_service import create_mock_async_metric_compute
+    from ..services.embedding_compare_service import create_mock_async_embedding_compare_compute
     from ..services.corpus_import_service import create_mock_async_corpus_csv_import
 
     task_cache = MockTaskCache()
     compute_metrics_method = create_mock_async_metric_compute(task_cache)
+    compute_embedding_compare_method = create_mock_async_embedding_compare_compute(task_cache)
     corpus_csv_import_method = create_mock_async_corpus_csv_import(task_cache)
     get_async_result = create_mock_async_result(task_cache)
 
     metrics_service = MetricsService(
         text_service,
         compute_metrics_method,
+        get_async_result,
+    )
+    embedding_compare_service = EmbeddingCompareService(
+        text_service,
+        compute_embedding_compare_method,
         get_async_result,
     )
     corpus_import_service = CorpusImportService(

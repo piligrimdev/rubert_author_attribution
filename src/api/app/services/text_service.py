@@ -67,9 +67,11 @@ class TextService:
         ]
 
     async def get_texts_of_author(
-            self, author_id: uuid.UUID, user_id, session
-    ) -> List[TextItemResponse]:
+            self, author_id: uuid.UUID,
+            user_id, session
+    ) -> List[Text]:
         available_ids = await self._get_available_author_ids(user_id, session)
+
         admin_users_ids = \
             [user.id for user in await self.user_service.get_admin_users(session=session)]
 
@@ -82,6 +84,16 @@ class TextService:
         texts = await self.crud.get_by_author(author_id, session=session)
 
         return [
+            t for t in texts if t.provided_by_user in [user_id, *admin_users_ids]
+        ]
+
+    async def get_texts_of_author_formatted(
+            self, author_id: uuid.UUID, user_id, session
+    ) -> List[TextItemResponse]:
+
+        texts = await self.get_texts_of_author(author_id, user_id, session=session)
+
+        return [
             TextItemResponse(
                 text_id=t.id,
                 text=t.text,
@@ -91,7 +103,6 @@ class TextService:
                 provided_by=t.provided_by_user,
             )
             for t in texts
-            if t.provided_by_user in [user_id, *admin_users_ids]
         ]
 
     def _embed(self, text: str) -> list:
@@ -263,6 +274,7 @@ class TextService:
 
         text = await self.crud.get_by_id(author_id, session=session)
 
+
         if not await self.user_service.is_user_admin(user) and not text.provided_by_user == user_id:
             raise HTTPException(
                 403,
@@ -270,6 +282,10 @@ class TextService:
             )
 
         text = await self.crud.update(text, updates, session=session)
+
+        if 'text' in updates:
+            embedding = self._embed(text.text)
+            text = await self.crud.update_embedding(text, embedding, session=session)
 
         return TextEditResponse(
             id=text.id,

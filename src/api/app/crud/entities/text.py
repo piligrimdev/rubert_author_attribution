@@ -101,8 +101,20 @@ class TextCRUDDatabaseProvider(AbstractCRUDDatabaseProvider):
 
     async def get_by_id(
             self, text_id, session: Session = None
-    ) -> Author:
+    ) -> Text:
         return await self.select_where(
             Text.id == text_id,
             session=session
         )
+
+    async def update_embedding(
+            self, text, embedding, session: Session = None
+    ) -> Text:
+        entity = session.merge(text)
+
+        entity.embedding = embedding
+
+        session.commit()
+        session.refresh(entity)
+        session.expunge(entity)
+        return entity

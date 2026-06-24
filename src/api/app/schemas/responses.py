@@ -1,5 +1,6 @@
 import uuid
-from typing import List, Optional
+from datetime import datetime
+from typing import List, Literal, Optional
 from pydantic import BaseModel, Field
 from .requests import EditAuthorForm, EditTextForm
 
@@ -93,6 +94,51 @@ class CorpusImportTaskStatus(BaseModel):
 class GenreResponse(BaseModel):
     id: uuid.UUID
     name: str
+
+
+class EmbeddingUmapParams(BaseModel):
+    max_per_author: int
+    pca_components: int
+    n_neighbors: int
+    min_dist: float
+    metric: str
+
+
+class EmbeddingUmapMeta(BaseModel):
+    method: Literal["umap", "tsne"]
+    n_components: int
+    n_points: int
+    n_authors: int
+    color_by: Literal["author", "genre", "source"]
+    is_mock: bool = Field(description="True для демо-данных, False для реального UMAP")
+    computed_at: datetime
+    params: EmbeddingUmapParams
+
+
+class EmbeddingUmapAuthorLegendItem(BaseModel):
+    author_id: uuid.UUID
+    author_name: str
+    genre: str
+    source: str
+    color: str
+
+
+class EmbeddingUmapPoint(BaseModel):
+    text_id: uuid.UUID
+    author_id: uuid.UUID
+    author_name: str
+    genre: str
+    source: str
+    x: float
+    y: float
+    text_preview: str = Field(description="Короткий фрагмент текста для hover-подсказки")
+    color: str
+
+
+class EmbeddingUmapResponse(BaseModel):
+    meta: EmbeddingUmapMeta
+    legend: List[EmbeddingUmapAuthorLegendItem]
+    points: List[EmbeddingUmapPoint]
 
 class UserDataResponse(BaseModel):
     user_id: uuid.UUID = Field(description="Id of the user")

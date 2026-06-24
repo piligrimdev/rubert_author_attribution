@@ -72,6 +72,17 @@ class GetMetricsRequest(BaseModel):
     author_id: uuid.UUID = Field(description="UUID of the author")
 
 
+class EmbeddingCompareRequest(BaseModel):
+    author_id_1: uuid.UUID = Field(description="UUID of the first author")
+    author_id_2: uuid.UUID = Field(description="UUID of the second author")
+    max_per_author: int = Field(
+        default=50,
+        ge=1,
+        le=500,
+        description="Maximum number of text embeddings per author",
+    )
+
+
 
 class CreateGenreForm(BaseModel):
     name: str = Field(description="Genre name")
