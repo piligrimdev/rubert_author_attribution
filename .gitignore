@@ -46,3 +46,4 @@ src/logs/*.jsonl
 src/logs/*.jsonl*
 
 TODO.md
+ignore/
