@@ -54,6 +54,13 @@ class AuthorCRUDDatabaseProvider(AbstractCRUDDatabaseProvider):
             session=session
         )
 
+    async def get_by_id(
+            self, author_id, session: Session = None
+    ) -> Author:
+        return await self.select_where(
+            Author.id == author_id,
+            session=session
+        )
     async def get_by_full_name(
             self,
             name: str,

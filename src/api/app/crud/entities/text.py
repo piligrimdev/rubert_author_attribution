@@ -97,3 +97,11 @@ class TextCRUDDatabaseProvider(AbstractCRUDDatabaseProvider):
         session.expunge(text_obj)
 
         return text_obj
+
+    async def get_by_id(
+            self, text_id, session: Session = None
+    ) -> Author:
+        return await self.select_where(
+            Text.id == text_id,
+            session=session
+        )

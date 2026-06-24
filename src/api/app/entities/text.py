@@ -14,13 +14,16 @@ import uuid
 class Text(Base, WithIDMixin):
     text: Mapped[str] = mapped_column(String, unique=False, nullable=False)
 
-    author_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("author.id"))
+    author_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("author.id", ondelete="CASCADE"))
+    #author_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("author.id"))
     author: Mapped["Author"] = relationship()
 
-    genre_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("genre.id"))
+    genre_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("genre.id", ondelete="CASCADE"))
+    #genre_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("genre.id"))
     genre: Mapped["Genre"] = relationship()
 
-    provided_by_user: Mapped[uuid.UUID] = mapped_column(ForeignKey("user.id"))
+    provided_by_user: Mapped[uuid.UUID] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"))
+    #provided_by_user: Mapped[uuid.UUID] = mapped_column(ForeignKey("user.id"))
     provided_by: Mapped["User"] = relationship()
 
     is_visible: Mapped[bool] = mapped_column(Boolean, unique=False, nullable=False, default=False)

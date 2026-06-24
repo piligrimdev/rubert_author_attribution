@@ -46,6 +46,16 @@ async def create_author(
     log.debug("authors.create_requested", user_id=str(user_id))
     return await author_service.create(form, user_id, session)
 
+@authors_routes.delete("/{author_id}")
+async def delete_author(
+        author_id: str,
+        user_id: CurrentUserUUID,
+        session: session_dependency
+):
+    log.debug("authors.delete_requested", user_id=str(user_id))
+    await author_service.delete_author(author_id, user_id, session)
+    return Response(status_code=204)
+        session: session_dependency
 @authors_routes.post("/compute_metrics")
 async def start_compute_metrics_task_endpoint(
     form: GetMetricsRequest, user_id: CurrentUserUUID, session: session_dependency

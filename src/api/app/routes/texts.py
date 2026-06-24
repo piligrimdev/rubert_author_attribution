@@ -37,3 +37,13 @@ async def add_text(
 ):
     log.debug("texts.add_text_requested", user_id=str(user_id))
     return await text_service.add_text(form, user_id, session)
+
+@texts_routes.delete("/{text_id}")
+async def delete_text(
+        text_id: str,
+        user_id: CurrentUserUUID,
+        session: session_dependency
+):
+    log.debug("texts.delete_requested", user_id=str(user_id))
+    await text_service.delete_text(text_id, user_id, session)
+    return Response(status_code=204)

@@ -215,3 +215,18 @@ class TextService:
         logger.info("texts.find_nearest.finished")
 
         return NearestTextsResponse(items=items)
+
+    async def delete_text(self, text_id, user_id, session):
+        text = await self.crud.get_by_id(text_id, session=session)
+        user = await self.user_service.get_user_by_id(user_id, session=session)
+
+        is_admin_user = await self.user_service.is_user_admin(user)
+
+        if text.provided_by_user != user_id and not is_admin_user:
+            raise HTTPException(
+                403,
+                "Text can be deleted only by user uploaded given text or admin users"
+            )
+
+        await self.crud.delete(text, session=session)
+

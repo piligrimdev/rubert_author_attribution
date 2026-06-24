@@ -169,3 +169,20 @@ class AuthorService:
             user,
             session=session
         )
+
+    async def delete_author(self, author_id, user_id, session):
+        author = await self.crud.get_by_id(author_id, session=session)
+        user = await self.user_service.get_user_by_id(user_id, session=session)
+
+        if await self.user_service.is_user_admin(user):
+            await self.crud.delete(author, session=session)
+            return
+
+        if author.provided_by_user == user_id:
+            await self.crud.delete(author, session=session)
+            return
+
+        raise HTTPException(
+            403,
+            "Author can be deleted only by admin or the user who added them",
+        )

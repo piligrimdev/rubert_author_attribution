@@ -16,7 +16,8 @@ class Author(Base, WithIDMixin):
 
     description: Mapped[str] = mapped_column(String, unique=False, nullable=True)
 
-    provided_by_user: Mapped[uuid.UUID] = mapped_column(ForeignKey("user.id"), nullable=True)
+    provided_by_user: Mapped[uuid.UUID] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"), nullable=True)
+    #provided_by_user: Mapped[uuid.UUID] = mapped_column(ForeignKey("user.id"), nullable=True)
     provided_by: Mapped["User"] = relationship()
 
     def __init__(self, name, surname, last_name, provided_by):
