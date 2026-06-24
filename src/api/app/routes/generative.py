@@ -10,7 +10,13 @@ from ..schemas.responses import GenerateStyledResponse
 generative_router = APIRouter(prefix="/generative", tags=["generative"])
 log = structlog.get_logger(__name__)
 
-@generative_router.post("/style_text")
+@generative_router.post(
+    "/style_text",
+    deprecated=True,
+    description="This functionality was supposed to paraphrase given"
+                " text in specific author style with LLM, but training"
+                " and hosting LLM was not implemented at this point."
+)
 async def style_text(
     form: GenerateStyledRequest,
     user_id: CurrentUserUUID,

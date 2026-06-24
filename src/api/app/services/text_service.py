@@ -50,6 +50,9 @@ class TextService:
         author_ids = await self._get_available_author_ids(user_id, session)
         texts = await self.crud.get_available(author_ids, session=session)
 
+        admin_users_ids = \
+            [user.id for user in await self.user_service.get_admin_users(session=session)]
+
         return [
             TextItemResponse(
                 text_id=t.id,
@@ -57,14 +60,18 @@ class TextService:
                 author_id=t.author_id,
                 author=str(t.author),
                 genre=str(t.genre),
+                provided_by=t.provided_by_user,
             )
             for t in texts
+            if t.provided_by_user in [user_id, *admin_users_ids]
         ]
 
     async def get_texts_of_author(
             self, author_id: uuid.UUID, user_id, session
     ) -> List[TextItemResponse]:
         available_ids = await self._get_available_author_ids(user_id, session)
+        admin_users_ids = \
+            [user.id for user in await self.user_service.get_admin_users(session=session)]
 
         if author_id not in available_ids:
             logger.error("texts.get_texts_of_author.not_available", user_id=user_id, author_id=author_id)
@@ -81,8 +88,10 @@ class TextService:
                 author_id=t.author_id,
                 author=str(t.author),
                 genre=str(t.genre),
+                provided_by=t.provided_by_user,
             )
             for t in texts
+            if t.provided_by_user in [user_id, *admin_users_ids]
         ]
 
     def _embed(self, text: str) -> list:
@@ -160,6 +169,7 @@ class TextService:
             author_id=author.id,
             author=str(author),
             genre=str(genre),
+            provided_by=text_obj.provided_by_user,
         )
 
     async def find_nearest(
@@ -193,11 +203,18 @@ class TextService:
                 )
             search_author_ids = author_ids
 
+        texts_ids = await self.list_available(user_id, session)
+        texts_ids = [
+            t.id for t in texts_ids
+            if t.author_id in search_author_ids
+        ]
+
         embedding = self._embed(text)
 
         results = await self.crud.find_nearest(
             embedding=embedding,
-            author_ids=search_author_ids,
+            #author_ids=search_author_ids,
+            texts_ids=texts_ids,
             k=k,
             session=session,
         )

@@ -7,6 +7,7 @@ from .admin import *
 from .authors import authors_routes
 from .texts import texts_routes
 from .generative import generative_router
+from .genres import genre_routes
 
 router = APIRouter(prefix='/api')
 
@@ -28,7 +29,7 @@ router.include_router(attribute_router)
 router.include_router(user_router)
 router.include_router(authors_routes)
 router.include_router(texts_routes)
-router.include_router(generative_router)
+router.include_router(genre_routes)
 router.include_router(init_docs_router())
 
 admin_routes = [

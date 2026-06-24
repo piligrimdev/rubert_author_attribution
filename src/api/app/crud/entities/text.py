@@ -49,18 +49,19 @@ class TextCRUDDatabaseProvider(AbstractCRUDDatabaseProvider):
     async def find_nearest(
             self,
             embedding: list,
-            author_ids: List[uuid.UUID],
+            #author_ids: List[uuid.UUID],
+            text_ids: List[uuid.UUID],
             k: int = 5,
             session: Session = None
     ) -> list:
-        if not author_ids:
+        if not text_ids:
             return []
 
         distance = Text.embedding.cosine_distance(embedding)
 
         stmt = (
             select(Text, distance.label("distance"))
-            .where(Text.author_id.in_(author_ids))
+            .where(Text.id.in_(text_ids))
             .options(joinedload(Text.author))
             .order_by(distance)
             .limit(k)

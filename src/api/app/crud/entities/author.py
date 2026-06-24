@@ -1,6 +1,5 @@
 from typing import List
 
-from pydantic import ValidationError
 from sqlalchemy import and_, or_
 
 from ..abstract_crud_db_provider import AbstractCRUDDatabaseProvider
@@ -61,6 +60,7 @@ class AuthorCRUDDatabaseProvider(AbstractCRUDDatabaseProvider):
             Author.id == author_id,
             session=session
         )
+
     async def get_by_full_name(
             self,
             name: str,
