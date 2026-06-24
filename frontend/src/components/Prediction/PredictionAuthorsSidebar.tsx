@@ -17,17 +17,13 @@ import CircularProgress from "@mui/material/CircularProgress";
 import SearchIcon from "@mui/icons-material/Search";
 import type { Author } from "@/types/author";
 import { formatAuthorLabel } from "@/components/StyleText/authorLabel";
-
-function authorMatchesQuery(author: Author, query: string): boolean {
-  const q = query.trim().toLowerCase();
-  if (!q) return true;
-  const label = formatAuthorLabel(author).toLowerCase();
-  if (label.includes(q)) return true;
-  const parts = [author.name, author.surname, author.last_name]
-    .filter(Boolean)
-    .map((s) => s.toLowerCase());
-  return parts.some((p) => p.includes(q));
-}
+import {
+  authorMatchesGenre,
+  authorMatchesQuery,
+  buildAuthorGenresMap,
+} from "@/utils/authorFilter";
+import { useTexts } from "@/hooks/useTexts";
+import GenreFilterAutocomplete from "@/components/common/GenreFilterAutocomplete";
 
 interface PredictionAuthorsSidebarProps {
   authors: Author[];
@@ -43,10 +39,19 @@ export default function PredictionAuthorsSidebar({
   isLoading,
 }: PredictionAuthorsSidebarProps) {
   const [search, setSearch] = useState("");
+  const [genre, setGenre] = useState("");
+  const { data: texts = [] } = useTexts();
+
+  const genresMap = useMemo(() => buildAuthorGenresMap(texts), [texts]);
 
   const filtered = useMemo(
-    () => authors.filter((a) => authorMatchesQuery(a, search)),
-    [authors, search],
+    () =>
+      authors.filter(
+        (author) =>
+          authorMatchesQuery(author, search) &&
+          authorMatchesGenre(author.id, genre, genresMap),
+      ),
+    [authors, search, genre, genresMap],
   );
 
   const toggleId = (id: string) => {
@@ -86,6 +91,7 @@ export default function PredictionAuthorsSidebar({
   }
 
   const selectedInFiltered = filtered.filter((a) => selectedIds.includes(a.id)).length;
+  const hasActiveFilters = search.trim() !== "" || genre !== "";
 
   return (
     <Paper
@@ -105,22 +111,29 @@ export default function PredictionAuthorsSidebar({
         <Typography variant="subtitle1" fontWeight={600} gutterBottom>
           Авторы для сравнения
         </Typography>
-        <TextField
-          size="small"
-          fullWidth
-          placeholder="Поиск по имени или фамилии…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          slotProps={{
-            input: {
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon fontSize="small" color="action" />
-                </InputAdornment>
-              ),
-            },
-          }}
-        />
+        <Stack spacing={1}>
+          <TextField
+            size="small"
+            fullWidth
+            placeholder="Поиск по имени или фамилии…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon fontSize="small" color="action" />
+                  </InputAdornment>
+                ),
+              },
+            }}
+          />
+          <GenreFilterAutocomplete
+            value={genre}
+            onChange={setGenre}
+            fullWidth
+          />
+        </Stack>
         <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap" useFlexGap>
           <Button size="small" onClick={handleClearSelection} disabled={selectedIds.length === 0}>
             Снять выбор
@@ -136,7 +149,7 @@ export default function PredictionAuthorsSidebar({
         <FormHelperText sx={{ mx: 0, mt: 1 }}>
           Не выбран ни один автор — поиск по всем доступным. Иначе только среди
           отмеченных ({selectedIds.length}
-          {filtered.length !== authors.length
+          {hasActiveFilters || filtered.length !== authors.length
             ? ` · в списке ${filtered.length} из ${authors.length}`
             : ""}
           ).
@@ -157,7 +170,7 @@ export default function PredictionAuthorsSidebar({
           <ListItem>
             <ListItemText
               primary="Никого не найдено"
-              secondary="Измените запрос поиска"
+              secondary="Измените запрос поиска или фильтр жанра"
               secondaryTypographyProps={{ color: "text.secondary" }}
             />
           </ListItem>

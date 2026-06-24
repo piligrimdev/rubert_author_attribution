@@ -1,7 +1,7 @@
 import axios from "axios";
 
 import { apiClient } from "./client";
-import type { Author, CreateAuthorRequest } from "@/types/author";
+import type { Author, CreateAuthorRequest, EditAuthorRequest, EditAuthorResponse } from "@/types/author";
 import type {
   AuthorMetricsResponse,
   StartComputeMetricsTaskResponse,
@@ -35,6 +35,18 @@ export async function fetchGenerativeAuthors(): Promise<Author[]> {
 
 export async function createAuthor(data: CreateAuthorRequest): Promise<Author> {
   const res = await apiClient.post<Author>("/authors/create", data);
+  return res.data;
+}
+
+export async function deleteAuthor(authorId: string): Promise<void> {
+  await apiClient.delete(`/authors/${authorId}`);
+}
+
+export async function editAuthor(
+  authorId: string,
+  data: EditAuthorRequest,
+): Promise<EditAuthorResponse> {
+  const res = await apiClient.patch<EditAuthorResponse>(`/authors/${authorId}`, data);
   return res.data;
 }
 

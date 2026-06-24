@@ -1,10 +1,11 @@
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import NoteAddIcon from "@mui/icons-material/NoteAdd";
+import GenreAutocomplete from "@/components/common/GenreAutocomplete";
 
 interface FormValues {
   text: string;
@@ -20,6 +21,7 @@ export default function AddTextForm({ onSubmit, isLoading }: AddTextFormProps) {
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
   } = useForm<FormValues>();
 
@@ -30,12 +32,20 @@ export default function AddTextForm({ onSubmit, isLoading }: AddTextFormProps) {
       </Typography>
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
         <Stack spacing={2}>
-          <TextField
-            {...register("genre_name", { required: "Укажите жанр" })}
-            label="Жанр"
-            fullWidth
-            error={!!errors.genre_name}
-            helperText={errors.genre_name?.message}
+          <Controller
+            name="genre_name"
+            control={control}
+            rules={{ required: "Укажите жанр" }}
+            render={({ field, fieldState }) => (
+              <GenreAutocomplete
+                value={field.value ?? ""}
+                onChange={field.onChange}
+                label="Жанр"
+                required
+                error={!!fieldState.error}
+                helperText={fieldState.error?.message}
+              />
+            )}
           />
           <TextField
             {...register("text", {

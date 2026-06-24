@@ -12,3 +12,9 @@ export interface TokenResponse {
   access_token: string;
   token_type: string;
 }
+
+export interface CurrentUser {
+  user_id: string;
+  username: string;
+  role: string;
+}

@@ -11,7 +11,6 @@ import { useAuth } from "@/context/AuthContext";
 
 const NAV_ITEMS = [
   { label: "Атрибуция", to: "/" },
-  { label: "Стилизация", to: "/style" },
   { label: "Авторы", to: "/authors" },
 ] as const;
 

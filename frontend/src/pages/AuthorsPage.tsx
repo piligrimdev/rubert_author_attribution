@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import Stack from "@mui/material/Stack";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -9,10 +10,40 @@ import UploadFileIcon from "@mui/icons-material/UploadFile";
 import { Link } from "react-router-dom";
 import PageTitle from "@/components/common/PageTitle";
 import AuthorsGrid from "@/components/Authors/AuthorsGrid";
+import AuthorsFilters from "@/components/Authors/AuthorsFilters";
 import { useAuthors } from "@/hooks/useAuthors";
+import { useTexts } from "@/hooks/useTexts";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import {
+  buildAuthorGenresMap,
+  filterAuthors,
+  type ProvidedByFilter,
+} from "@/utils/authorFilter";
 
 export default function AuthorsPage() {
+  const [search, setSearch] = useState("");
+  const [genre, setGenre] = useState("");
+  const [providedBy, setProvidedBy] = useState<ProvidedByFilter>("all");
+  const { data: currentUser } = useCurrentUser();
+  const currentUserId = currentUser?.user_id ?? null;
   const { data: authors, isLoading, error } = useAuthors();
+  const { data: texts = [] } = useTexts();
+
+  const genresMap = useMemo(() => buildAuthorGenresMap(texts), [texts]);
+
+  const filteredAuthors = useMemo(
+    () =>
+      filterAuthors(authors ?? [], {
+        search,
+        genre,
+        providedBy,
+        genresMap,
+        currentUserId,
+      }),
+    [authors, search, genre, providedBy, genresMap, currentUserId],
+  );
+
+  const hasActiveFilters = search.trim() !== "" || genre !== "" || providedBy !== "all";
 
   return (
     <Stack spacing={2}>
@@ -46,6 +77,17 @@ export default function AuthorsPage() {
         </Stack>
       </Box>
 
+      {authors && authors.length > 0 && (
+        <AuthorsFilters
+          search={search}
+          onSearchChange={setSearch}
+          genre={genre}
+          onGenreChange={setGenre}
+          providedBy={providedBy}
+          onProvidedByChange={setProvidedBy}
+        />
+      )}
+
       {isLoading && (
         <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
           <CircularProgress />
@@ -64,7 +106,15 @@ export default function AuthorsPage() {
         </Typography>
       )}
 
-      {authors && authors.length > 0 && <AuthorsGrid authors={authors} />}
+      {authors && authors.length > 0 && filteredAuthors.length === 0 && (
+        <Typography color="text.secondary" sx={{ py: 4, textAlign: "center" }}>
+          {hasActiveFilters
+            ? "По выбранным фильтрам авторов не найдено."
+            : "Авторов пока нет. Добавьте первого!"}
+        </Typography>
+      )}
+
+      {filteredAuthors.length > 0 && <AuthorsGrid authors={filteredAuthors} />}
     </Stack>
   );
 }

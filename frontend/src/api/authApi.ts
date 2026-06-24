@@ -3,6 +3,7 @@ import type {
   LoginRequest,
   RegisterRequest,
   TokenResponse,
+  CurrentUser,
 } from "@/types/auth";
 
 export async function login(data: LoginRequest): Promise<TokenResponse> {
@@ -17,5 +18,10 @@ export async function register(data: RegisterRequest): Promise<TokenResponse> {
 
 export async function refreshToken(): Promise<TokenResponse> {
   const res = await apiClient.post<TokenResponse>("/auth/refresh");
+  return res.data;
+}
+
+export async function fetchMe(): Promise<CurrentUser> {
+  const res = await apiClient.get<CurrentUser>("/auth/me");
   return res.data;
 }
