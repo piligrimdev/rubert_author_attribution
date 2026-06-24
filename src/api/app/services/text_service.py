@@ -2,6 +2,7 @@ import uuid
 from typing import List, Optional
 import structlog
 from fastapi import HTTPException
+from starlette.status import HTTP_400_BAD_REQUEST
 
 from ..crud.entities.text import TextCRUDDatabaseProvider
 from ..crud.entities.genre import GenreCRUDDatabaseProvider
@@ -10,8 +11,8 @@ from ..entities.author import Author
 from ..entities.genre import Genre
 from ..entities.text import Text
 from ..models.abstract_model_provider import AbstractModelProvider
-from ..schemas.requests import CreateTextForm
-from ..schemas.responses import TextItemResponse, NearestTextItem, NearestTextsResponse
+from ..schemas.requests import CreateTextForm, EditTextForm
+from ..schemas.responses import TextItemResponse, NearestTextItem, NearestTextsResponse, TextEditResponse
 
 
 logger = structlog.get_logger(__name__)
@@ -229,4 +230,32 @@ class TextService:
             )
 
         await self.crud.delete(text, session=session)
+
+    async def edit_text(
+            self,
+            author_id,
+            form: EditTextForm,
+            user_id,
+            session,
+    ) -> TextEditResponse:
+        updates = form.model_dump(exclude_unset=True)
+        if not updates:
+            raise HTTPException(HTTP_400_BAD_REQUEST, "No fields to update")
+
+        user = await self.user_service.get_user_by_id(user_id, session=session)
+
+        text = await self.crud.get_by_id(author_id, session=session)
+
+        if not await self.user_service.is_user_admin(user) and not text.provided_by_user == user_id:
+            raise HTTPException(
+                403,
+                "Text can be edited only by admin or the user who added them"
+            )
+
+        text = await self.crud.update(text, updates, session=session)
+
+        return TextEditResponse(
+            id=text.id,
+            text=text.text,
+        )
 

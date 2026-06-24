@@ -1,6 +1,7 @@
 import uuid
 from typing import List, Optional
 from pydantic import BaseModel, Field
+from .requests import EditAuthorForm, EditTextForm
 
 
 class AttributionProba(BaseModel):
@@ -36,6 +37,7 @@ class TextItemResponse(BaseModel):
     author_id: uuid.UUID
     author: str
     genre: str
+    provided_by: uuid.UUID = Field(description="UUID of user who uploaded the text")
 
 
 class NearestTextItem(BaseModel):
@@ -91,3 +93,15 @@ class CorpusImportTaskStatus(BaseModel):
 class GenreResponse(BaseModel):
     id: uuid.UUID
     name: str
+
+class UserDataResponse(BaseModel):
+    user_id: uuid.UUID = Field(description="Id of the user")
+    role: str
+    username: str
+
+class TextEditResponse(EditTextForm):
+    id: Optional[uuid.UUID] = Field(default=None, description="UUID of the text")
+
+class AuthorEditResponse(EditAuthorForm):
+    id: Optional[uuid.UUID] = Field(default=None, description="UUID of the author")
+

@@ -2,6 +2,7 @@ from typing import Annotated
 
 import structlog
 from fastapi import APIRouter, Depends, Form, UploadFile
+from starlette.responses import Response
 
 from ..core.dependencies import (
     CurrentUserUUID,
@@ -13,10 +14,11 @@ from ..core.services import (
     metrics_service,
     corpus_import_service,
 )
-from ..schemas.requests import CreateAuthorForm, GetMetricsRequest
+from ..schemas.requests import CreateAuthorForm, GetMetricsRequest, EditAuthorForm
 from ..schemas.responses import (
     CorpusImportTaskStatus,
     StartCorpusImportTaskResponse,
+    AuthorEditResponse
 )
 
 authors_routes = APIRouter(prefix="/authors", tags=["authors"])
@@ -55,7 +57,17 @@ async def delete_author(
     log.debug("authors.delete_requested", user_id=str(user_id))
     await author_service.delete_author(author_id, user_id, session)
     return Response(status_code=204)
+
+@authors_routes.patch("/{author_id}")
+async def edit_author(
+        author_id: str,
+        form: EditAuthorForm,
+        user_id: CurrentUserUUID,
         session: session_dependency
+) -> AuthorEditResponse:
+    log.debug("authors.edit_requested", user_id=str(user_id))
+    return await author_service.edit_author(author_id, form, user_id, session)
+
 @authors_routes.post("/compute_metrics")
 async def start_compute_metrics_task_endpoint(
     form: GetMetricsRequest, user_id: CurrentUserUUID, session: session_dependency

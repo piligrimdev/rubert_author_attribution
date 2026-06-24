@@ -2,11 +2,12 @@ import uuid
 from typing import List
 import structlog
 from fastapi import APIRouter
+from starlette.responses import Response
 
 from ..core.dependencies import CurrentUserUUID, session_dependency
 from ..core.services import  text_service
-from ..schemas.requests import CreateTextForm
-from ..schemas.responses import TextItemResponse
+from ..schemas.requests import CreateTextForm, EditTextForm
+from ..schemas.responses import TextItemResponse, TextEditResponse
 
 texts_routes = APIRouter(prefix="/texts", tags=["texts"])
 
@@ -37,6 +38,16 @@ async def add_text(
 ):
     log.debug("texts.add_text_requested", user_id=str(user_id))
     return await text_service.add_text(form, user_id, session)
+
+@texts_routes.patch("/{text_id}", response_model=TextEditResponse)
+async def edit_text(
+    text_id: str,
+    form: EditTextForm,
+    user_id: CurrentUserUUID,
+    session: session_dependency,
+):
+    log.debug("texts.edit_text_requested", user_id=str(user_id))
+    return await text_service.edit_text(text_id, form, user_id, session)
 
 @texts_routes.delete("/{text_id}")
 async def delete_text(

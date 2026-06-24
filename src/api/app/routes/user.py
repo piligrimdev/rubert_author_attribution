@@ -1,10 +1,10 @@
 from fastapi import APIRouter, HTTPException, Request, Response
 import structlog
 
-from ..core.dependencies import session_dependency
+from ..core.dependencies import session_dependency, CurrentUserUUID
 from ..core.services import user_service
 from ..schemas.requests import RegisterForm, LoginForm
-from ..schemas.responses import TokenResponse
+from ..schemas.responses import TokenResponse, UserDataResponse
 from ..utils.auth import (
     REFRESH_COOKIE_NAME,
     REFRESH_TOKEN_EXPIRATION_DAYS,
@@ -38,6 +38,16 @@ async def register(form: RegisterForm, session: session_dependency, response: Re
         raise HTTPException(status_code=409, detail="User with this username already exists")
     _set_refresh_cookie(response, refresh_token)
     return TokenResponse(access_token=access_token)
+
+@user_router.get("/me", response_model=UserDataResponse)
+async def about_me(user_id: CurrentUserUUID, session: session_dependency):
+    log.debug("auth.user_data.requested", user_id=str(user_id))
+    data = await user_service.get_user_by_id(user_id, session)
+    return UserDataResponse(
+        username=data.username,
+        user_id=user_id,
+        role=data.role.role_name,
+    )
 
 
 @user_router.post("/login", response_model=TokenResponse)

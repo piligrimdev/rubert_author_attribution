@@ -112,3 +112,26 @@ class AbstractCRUDDatabaseProvider(AbstractCRUDProvider):
         session.commit()
 
         return created_obj
+
+    async def update(
+            self,
+            entity,
+            updates: dict,
+            session: Session,
+    ) -> T:
+        # # stmt = select(self.model).where(self.model.id == entity_id)
+        # #
+        # # result = session.scalars(stmt)
+        # # obj = result.first()
+        #
+        # obj = session.get(self.model, entity_id)
+
+        entity = session.merge(entity)
+
+        for field, value in updates.items():
+            setattr(entity, field, value)
+
+        session.commit()
+        session.refresh(entity)
+        session.expunge(entity)
+        return entity

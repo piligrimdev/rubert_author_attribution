@@ -9,7 +9,8 @@ from ..crud.abstract_crud_db_provider import AlreadyExistsInDB, NotFoundInDB
 from ..crud.entities.author import AuthorCRUDDatabaseProvider
 from ..entities import User, Author
 
-from ..schemas.requests import CreateAuthorForm, GetAuthorForm
+from ..schemas.requests import CreateAuthorForm, GetAuthorForm, EditAuthorForm
+from ..schemas.responses import AuthorEditResponse
 
 logger = structlog.get_logger(__name__)
 
@@ -185,4 +186,37 @@ class AuthorService:
         raise HTTPException(
             403,
             "Author can be deleted only by admin or the user who added them",
+        )
+
+    # services/author_service.py
+
+    async def edit_author(
+            self,
+            author_id,
+            form: EditAuthorForm,
+            user_id,
+            session,
+    ) -> GetAuthorForm:
+        updates = form.model_dump(exclude_unset=True)
+        if not updates:
+            raise HTTPException(HTTP_400_BAD_REQUEST, "No fields to update")
+
+        user = await self.user_service.get_user_by_id(user_id, session=session)
+
+        author = await self.crud.get_by_id(author_id, session=session)
+
+        if not await self.user_service.is_user_admin(user) and not author.provided_by_user == user_id:
+            raise HTTPException(
+                403,
+                "Author can be edited only by admin or the user who added them"
+            )
+
+        author = await self.crud.update(author, updates, session=session)
+
+        return AuthorEditResponse(
+            id=author.id,
+            name=author.name,
+            surname=author.surname,
+            last_name=author.last_name,
+            description=author.description,
         )

@@ -75,3 +75,15 @@ class GetMetricsRequest(BaseModel):
 
 class CreateGenreForm(BaseModel):
     name: str = Field(description="Genre name")
+
+class EditTextForm(BaseModel):
+    text: Optional[str] = Field(default=None, description="Text content")
+
+class EditAuthorForm(BaseModel):
+    name: Optional[str] = Field(default=None, description="Author name")
+    surname: Optional[str] = Field(default=None, description="Author surname")
+    last_name: Optional[str] = Field(default=None, description="Author lastname")
+    description: Optional[str] = Field(default=None, description="Author description")
+
+class SuccessfulEditResponse(EditAuthorForm):
+    id: Optional[uuid.UUID] = Field(default=None, description="UUID of the author")
