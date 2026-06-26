@@ -1,4 +1,5 @@
 from typing import List
+import uuid
 
 from sqlalchemy import and_, or_
 
@@ -59,6 +60,20 @@ class AuthorCRUDDatabaseProvider(AbstractCRUDDatabaseProvider):
         return await self.select_where(
             Author.id == author_id,
             session=session
+        )
+
+    async def get_by_id_and_provided_user(
+            self,
+            author_id: uuid.UUID,
+            user_id: uuid.UUID,
+            session: Session = None,
+    ) -> Author:
+        return await self.select_where(
+            and_(
+                Author.id == author_id,
+                Author.provided_by_user == user_id,
+            ),
+            session=session,
         )
 
     async def get_by_full_name(

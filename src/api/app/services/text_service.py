@@ -53,6 +53,19 @@ class TextService:
         admin_users_ids = \
             [user.id for user in await self.user_service.get_admin_users(session=session)]
 
+        if self.user_service.is_user_admin(user_id):
+            return [
+                TextItemResponse(
+                    text_id=t.id,
+                    text=t.text,
+                    author_id=t.author_id,
+                    author=str(t.author),
+                    genre=str(t.genre),
+                    provided_by=t.provided_by_user,
+                )
+                for t in texts
+            ]
+            
         return [
             TextItemResponse(
                 text_id=t.id,
@@ -83,9 +96,12 @@ class TextService:
 
         texts = await self.crud.get_by_author(author_id, session=session)
 
-        return [
-            t for t in texts if t.provided_by_user in [user_id, *admin_users_ids]
-        ]
+        if self.user_service.is_user_admin(user_id):
+            return texts
+        else:
+            return [
+                t for t in texts if t.provided_by_user in [user_id, *admin_users_ids]
+            ]
 
     async def get_texts_of_author_formatted(
             self, author_id: uuid.UUID, user_id, session
@@ -145,14 +161,6 @@ class TextService:
     async def add_text(
             self, form: CreateTextForm, user_id, session
     ) -> TextItemResponse:
-        available_ids = await self._get_available_author_ids(user_id, session)
-
-        if form.author_id not in available_ids:
-            logger.error("texts.add_text_for_author.not_available", user_id=user_id, author_id=form.author_id)
-            raise HTTPException(
-                status_code=403, detail="Author is not available to you"
-            )
-
         try:
             genre = await self.genre_crud.get_by_name(
                 form.genre_name, session=session
@@ -161,8 +169,8 @@ class TextService:
             logger.error("texts.add_text_for_author.genre_not_found", user_id=user_id, genre=form.genre_name)
             raise HTTPException(status_code=404, detail="Genre not found")
 
-        author = await self.author_service.crud.select_where(
-            Author.id == form.author_id, session=session
+        author = await self.author_service.ensure_author_provided_by_user(
+            form.author_id, user_id, session=session
         )
 
         user = await self.user_service.get_user_by_id(user_id, session=session)
@@ -222,7 +230,7 @@ class TextService:
 
         texts_ids = await self.list_available(user_id, session)
         texts_ids = [
-            t.id for t in texts_ids
+            t.text_id for t in texts_ids
             if t.author_id in search_author_ids
         ]
 
@@ -231,7 +239,7 @@ class TextService:
         results = await self.crud.find_nearest(
             embedding=embedding,
             #author_ids=search_author_ids,
-            texts_ids=texts_ids,
+            text_ids=texts_ids,
             k=k,
             session=session,
         )

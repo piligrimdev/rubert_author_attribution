@@ -148,6 +148,18 @@ class AuthorService:
             session=session
         )
 
+    async def get_by_full_name(self, name: str, surname: str, last_name: str, user_id, session):
+        admin_users = await self._get_admins_and_requester(user_id, session)
+
+
+        return await self.crud.get_by_full_name(
+            name,
+            surname,
+            last_name,
+            admin_users,
+            session=session
+        )
+
     async def get_by_part_name(self, form: GetAuthorForm, user_id, session):
 
         if not any([form.name, form.surname, form.last_name]):
@@ -170,6 +182,29 @@ class AuthorService:
             user,
             session=session
         )
+
+    async def ensure_author_provided_by_user(
+            self, author_id, user_id, session
+    ) -> Author:
+        user = await self.user_service.get_user_by_id(user_id, session=session)
+
+        if await self.user_service.is_user_admin(user):
+            return await self.crud.get_by_id(author_id, session=session)
+
+        try:
+            return await self.crud.get_by_id_and_provided_user(
+                author_id, user_id, session=session
+            )
+        except NotFoundInDB:
+            logger.error(
+                "authors.ensure_author_provided_by_user.not_owner",
+                user_id=user_id,
+                author_id=author_id,
+            )
+            raise HTTPException(
+                status_code=403,
+                detail="Text can be added only to authors you created",
+            )
 
     async def delete_author(self, author_id, user_id, session):
         author = await self.crud.get_by_id(author_id, session=session)
