@@ -7,25 +7,23 @@ from ..schemas.requests import RegisterForm, LoginForm
 from ..schemas.responses import TokenResponse, UserDataResponse
 from ..utils.auth import (
     REFRESH_COOKIE_NAME,
-    REFRESH_TOKEN_EXPIRATION_DAYS,
     create_access_token,
     create_refresh_token,
     decode_refresh_token,
+)
+from ..utils.auth_cookies import (
+    clear_auth_cookies,
+    set_access_cookie,
+    set_refresh_cookie,
 )
 
 user_router = APIRouter(prefix="/auth", tags=["Auth"])
 log = structlog.get_logger(__name__)
 
-def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
-    response.set_cookie(
-        key=REFRESH_COOKIE_NAME,
-        value=refresh_token,
-        httponly=True,
-        secure=True,
-        samesite="strict",
-        max_age=REFRESH_TOKEN_EXPIRATION_DAYS * 24 * 60 * 60,
-        path="/auth",
-    )
+
+def _set_auth_cookies(response: Response, access_token: str, refresh_token: str) -> None:
+    set_access_cookie(response, access_token)
+    set_refresh_cookie(response, refresh_token)
 
 
 @user_router.post("/register", response_model=TokenResponse)
@@ -36,8 +34,9 @@ async def register(form: RegisterForm, session: session_dependency, response: Re
     except Exception:
         log.debug("auth.registration_request_error", error_message="User with this username already exists", username=str(form.username))
         raise HTTPException(status_code=409, detail="User with this username already exists")
-    _set_refresh_cookie(response, refresh_token)
+    _set_auth_cookies(response, access_token, refresh_token)
     return TokenResponse(access_token=access_token)
+
 
 @user_router.get("/me", response_model=UserDataResponse)
 async def about_me(user_id: CurrentUserUUID, session: session_dependency):
@@ -58,7 +57,7 @@ async def login(form: LoginForm, session: session_dependency, response: Response
     except ValueError:
         log.debug("auth.login_request_failed", error_message="Invalid username or password", username=str(form.username))
         raise HTTPException(status_code=401, detail="Invalid username or password")
-    _set_refresh_cookie(response, refresh_token)
+    _set_auth_cookies(response, access_token, refresh_token)
     return TokenResponse(access_token=access_token)
 
 
@@ -76,5 +75,13 @@ async def refresh(request: Request, response: Response):
         log.debug("auth.refresh_access_token_request_failed", error_message="Invalid or expired refresh token")
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
 
-    _set_refresh_cookie(response, create_refresh_token(user_id))
-    return TokenResponse(access_token=create_access_token(user_id))
+    access_token = create_access_token(user_id)
+    refresh_token = create_refresh_token(user_id)
+    _set_auth_cookies(response, access_token, refresh_token)
+    return TokenResponse(access_token=access_token)
+
+
+@user_router.post("/logout", status_code=204)
+async def logout(response: Response):
+    log.debug("auth.logout_requested")
+    clear_auth_cookies(response)

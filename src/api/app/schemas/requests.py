@@ -1,7 +1,7 @@
 import uuid
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class AttributionRequest(BaseModel):
@@ -34,7 +34,16 @@ class CreateAuthorForm(BaseModel):
 
 class RegisterForm(BaseModel):
     username: str = Field(description="Username")
-    password: str = Field(description="Password")
+    password: str = Field(description="Password", min_length=8)
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, value: str) -> str:
+        if not any(char.isalpha() for char in value):
+            raise ValueError("Password must contain at least one letter")
+        if not any(char.isdigit() for char in value):
+            raise ValueError("Password must contain at least one digit")
+        return value
 
 
 class LoginForm(BaseModel):
