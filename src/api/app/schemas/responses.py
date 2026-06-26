@@ -65,12 +65,16 @@ class GenerateStyledResponse(BaseModel):
 class StartComputeTaskResponse(BaseModel):
     task_id: uuid.UUID = Field(description="Id of the task")
 
+class CorpusCsvImportResultError(BaseModel):
+    ind: int
+    error: str
+
 class CorpusCsvImportResult(BaseModel):
     """Results of csv importing."""
 
     added: int
     skipped_empty: int
-    errors: int
+    errors: list[CorpusCsvImportResultError]
 
 class StartCorpusImportTaskResponse(BaseModel):
     task_id: uuid.UUID = Field(description="Id of the task")
