@@ -1,7 +1,7 @@
 import uuid
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class AttributionRequest(BaseModel):
@@ -34,7 +34,16 @@ class CreateAuthorForm(BaseModel):
 
 class RegisterForm(BaseModel):
     username: str = Field(description="Username")
-    password: str = Field(description="Password")
+    password: str = Field(description="Password", min_length=8)
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, value: str) -> str:
+        if not any(char.isalpha() for char in value):
+            raise ValueError("Password must contain at least one letter")
+        if not any(char.isdigit() for char in value):
+            raise ValueError("Password must contain at least one digit")
+        return value
 
 
 class LoginForm(BaseModel):
@@ -72,6 +81,29 @@ class GetMetricsRequest(BaseModel):
     author_id: uuid.UUID = Field(description="UUID of the author")
 
 
+class EmbeddingCompareRequest(BaseModel):
+    author_id_1: uuid.UUID = Field(description="UUID of the first author")
+    author_id_2: uuid.UUID = Field(description="UUID of the second author")
+    max_per_author: int = Field(
+        default=50,
+        ge=1,
+        le=500,
+        description="Maximum number of text embeddings per author",
+    )
+
+
 
 class CreateGenreForm(BaseModel):
     name: str = Field(description="Genre name")
+
+class EditTextForm(BaseModel):
+    text: Optional[str] = Field(default=None, description="Text content")
+
+class EditAuthorForm(BaseModel):
+    name: Optional[str] = Field(default=None, description="Author name")
+    surname: Optional[str] = Field(default=None, description="Author surname")
+    last_name: Optional[str] = Field(default=None, description="Author lastname")
+    description: Optional[str] = Field(default=None, description="Author description")
+
+class SuccessfulEditResponse(EditAuthorForm):
+    id: Optional[uuid.UUID] = Field(default=None, description="UUID of the author")

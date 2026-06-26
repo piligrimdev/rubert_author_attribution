@@ -1,6 +1,7 @@
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
 import Fade from "@mui/material/Fade";
+import { strings } from "@/i18n/strings";
 
 interface StyleTextResultProps {
   text: string;
@@ -11,7 +12,7 @@ export default function StyleTextResult({ text }: StyleTextResultProps) {
     <Fade in>
       <Paper sx={{ p: 3, mt: 3 }}>
         <Typography variant="h6" gutterBottom>
-          Результат
+          {strings.styleText.resultTitle}
         </Typography>
         <Typography
           component="div"

@@ -40,7 +40,7 @@ class MetricsService:
             user_id: uuid.UUID,
             session
     ) -> StartComputeTaskResponse:
-        db_texts = await self.text_service.get_texts_of_author(form.author_id, user_id, session=session)
+        db_texts = await self.text_service.get_texts_of_author_formatted(form.author_id, user_id, session=session)
 
         provided_to_task_texts = [
                                      {

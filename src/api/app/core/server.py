@@ -10,6 +10,7 @@ from .database import database
 from .logging_config import UVICORN_LOG_CONFIG
 from .metrics import setup_http_metrics
 from .request_id_middleware import RequestIdMiddleware
+from .access_token_cookie_middleware import AccessTokenCookieMiddleware
 
 
 class API:
@@ -28,6 +29,7 @@ class API:
             secret_key="change-me",
         )
         self.api.add_middleware(RequestIdMiddleware)
+        self.api.add_middleware(AccessTokenCookieMiddleware)
         self.admin = Admin(
             self.api,
             engine,

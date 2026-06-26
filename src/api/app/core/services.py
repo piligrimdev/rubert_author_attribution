@@ -19,10 +19,12 @@ from ..services.author_generation_service import GenerativeService
 from ..services.genre_service import GenreService
 from ..services.corpus_csv_parse_service import CorpusCsvParseService
 from ..services.metrics_service import MetricsService
+from ..services.embedding_compare_service import EmbeddingCompareService
 from ..services.user_service import UserService
 from ..services.author_service import AuthorService
 from ..services.text_service import TextService
 from ..services.attribute_service import AttributeService
+from ..core.metrics import get_active_model_name
 from ..services.metrics_service import *
 
 
@@ -41,8 +43,9 @@ mlflow_client = MlflowClient(
 )
 
 use_bert = int(os.getenv("USE_BERT", 0))
-model=None
+use_fasttext = int(os.getenv("USE_FASTTEXT", 0))
 model = None
+
 if use_bert:
     bert_name = os.getenv("MLFLOW_BERT_MODEL_NAME", '')
     bert_tag = os.getenv("MLFLOW_BERT_MODEL_TAG", '')
@@ -56,6 +59,20 @@ if use_bert:
             bert_file_path,
             bert_tokenizer_name
         )
+elif use_fasttext:
+    from ..models.fasttext_model import FasttextModelProvider
+
+    import glob as _glob
+    fasttext_name = os.getenv("MLFLOW_FASTTEXT_MODEL_NAME", "fasttext_classifier")
+    fasttext_alias = os.getenv("MLFLOW_FASTTEXT_MODEL_ALIAS", "prod")
+    local_dir = mlflow.artifacts.download_artifacts(
+        artifact_uri=f"models:/{fasttext_name}@{fasttext_alias}",
+        dst_path="/tmp/mlflow_fasttext",
+    )
+    bin_files = _glob.glob(os.path.join(local_dir, "**/*.bin"), recursive=True)
+    if not bin_files:
+        raise FileNotFoundError(f"No .bin file found in MLflow artifact for {fasttext_name}@{fasttext_alias}")
+    model = FasttextModelProvider(bin_files[0])
 else:
     model = MockModelProvider()
 
@@ -88,7 +105,12 @@ text_service = TextService(
     model,
 )
 
-attribute_service = AttributeService(model, text_service, votes_with_sim_threshold)
+attribute_service = AttributeService(
+    model,
+    text_service,
+    votes_with_sim_threshold,
+    model_name=get_active_model_name(),
+)
 
 corpus_csv_parse_service = CorpusCsvParseService()
 
@@ -103,11 +125,17 @@ from ..services.corpus_import_service import CorpusImportService
 if use_celery:
     from celery.result import AsyncResult
     from ..services.metrics_service import metrics_compute
+    from ..services.embedding_compare_service import embedding_compare_compute
     from ..services.corpus_import_service import corpus_csv_import
 
     metrics_service = MetricsService(
         text_service,
         metrics_compute,
+        AsyncResult,
+    )
+    embedding_compare_service = EmbeddingCompareService(
+        text_service,
+        embedding_compare_compute,
         AsyncResult,
     )
     corpus_import_service = CorpusImportService(
@@ -123,16 +151,23 @@ if use_celery:
 else:
     from ..services.mock_worker_provider import create_mock_async_result, MockTaskCache
     from ..services.metrics_service import create_mock_async_metric_compute
+    from ..services.embedding_compare_service import create_mock_async_embedding_compare_compute
     from ..services.corpus_import_service import create_mock_async_corpus_csv_import
 
     task_cache = MockTaskCache()
     compute_metrics_method = create_mock_async_metric_compute(task_cache)
+    compute_embedding_compare_method = create_mock_async_embedding_compare_compute(task_cache)
     corpus_csv_import_method = create_mock_async_corpus_csv_import(task_cache)
     get_async_result = create_mock_async_result(task_cache)
 
     metrics_service = MetricsService(
         text_service,
         compute_metrics_method,
+        get_async_result,
+    )
+    embedding_compare_service = EmbeddingCompareService(
+        text_service,
+        compute_embedding_compare_method,
         get_async_result,
     )
     corpus_import_service = CorpusImportService(

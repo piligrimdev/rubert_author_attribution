@@ -12,6 +12,7 @@ import type {
   AttributionFormMode,
   AttributionSubmitPayload,
 } from "@/types/prediction";
+import { strings } from "@/i18n/strings";
 
 type PredictionFormFields = {
   text: string;
@@ -72,7 +73,7 @@ export default function PredictionForm({
             render={({ field }) => (
               <Stack spacing={0.5}>
                 <Typography variant="subtitle2" color="text.secondary">
-                  Метод
+                  {strings.attribution.method}
                 </Typography>
                 <ToggleButtonGroup
                   value={field.value}
@@ -82,19 +83,25 @@ export default function PredictionForm({
                   onChange={(_, value: AttributionFormMode | null) => {
                     if (value != null) field.onChange(value);
                   }}
-                  aria-label="метод атрибуции"
+                  aria-label={strings.attribution.methodAria}
                 >
-                  <ToggleButton value="nearest" aria-label="Ближайшие эмбеддинги">
-                    Ближайшие эмбеддинги
+                  <ToggleButton
+                    value="nearest"
+                    aria-label={strings.attribution.nearestEmbeddingsAria}
+                  >
+                    {strings.attribution.nearestEmbeddings}
                   </ToggleButton>
-                  <ToggleButton value="voting" aria-label="Голосование по порогу">
-                    Голосование (порог)
+                  <ToggleButton
+                    value="voting"
+                    aria-label={strings.attribution.votingAria}
+                  >
+                    {strings.attribution.voting}
                   </ToggleButton>
                 </ToggleButtonGroup>
                 <Typography variant="caption" color="text.secondary">
                   {field.value === "nearest"
-                    ? "Только список k ближайших фрагментов в базе."
-                    : "Учитываются голоса среди соседей; автор фиксируется, если сходство с ближайшим выше порога."}
+                    ? strings.attribution.nearestHint
+                    : strings.attribution.votingHint}
                 </Typography>
               </Stack>
             )}
@@ -105,13 +112,13 @@ export default function PredictionForm({
               name="threshold"
               control={control}
               rules={{
-                min: { value: 0.01, message: "Минимум 0.01" },
-                max: { value: 1, message: "Максимум 1" },
+                min: { value: 0.01, message: strings.attribution.thresholdMin },
+                max: { value: 1, message: strings.attribution.thresholdMax },
               }}
               render={({ field, fieldState }) => (
                 <Stack spacing={1}>
                   <Typography variant="subtitle2" color="text.secondary">
-                    Порог схожести (косинус ближайшего соседа)
+                    {strings.attribution.thresholdLabel}
                   </Typography>
                   <Slider
                     value={field.value}
@@ -141,14 +148,14 @@ export default function PredictionForm({
 
           <TextField
             {...register("text", {
-              required: "Введите текст для анализа",
+              required: strings.attribution.textRequired,
               minLength: {
                 value: 50,
-                message: "Текст должен содержать не менее 50 символов",
+                message: strings.attribution.textMinLength,
               },
             })}
-            label="Текст для атрибуции"
-            placeholder="Вставьте текст, авторство которого необходимо определить..."
+            label={strings.attribution.textLabel}
+            placeholder={strings.attribution.textPlaceholder}
             multiline
             minRows={5}
             maxRows={14}
@@ -159,10 +166,10 @@ export default function PredictionForm({
           <TextField
             {...register("k", {
               valueAsNumber: true,
-              min: { value: 1, message: "Минимум 1" },
-              max: { value: 20, message: "Максимум 20" },
+              min: { value: 1, message: strings.attribution.kMin },
+              max: { value: 20, message: strings.attribution.kMax },
             })}
-            label="Количество ближайших текстов (k)"
+            label={strings.attribution.kLabel}
             type="number"
             sx={{ maxWidth: 280 }}
             error={!!errors.k}
@@ -177,7 +184,9 @@ export default function PredictionForm({
             endIcon={<SendIcon />}
             sx={{ alignSelf: "flex-start" }}
           >
-            {mode === "nearest" ? "Найти ближайшие" : "Атрибутировать"}
+            {mode === "nearest"
+              ? strings.attribution.submitNearest
+              : strings.attribution.submitVoting}
           </Button>
         </Stack>
       </form>

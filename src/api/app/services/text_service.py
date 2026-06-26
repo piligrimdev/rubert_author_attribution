@@ -2,6 +2,7 @@ import uuid
 from typing import List, Optional
 import structlog
 from fastapi import HTTPException
+from starlette.status import HTTP_400_BAD_REQUEST
 
 from ..crud.entities.text import TextCRUDDatabaseProvider
 from ..crud.entities.genre import GenreCRUDDatabaseProvider
@@ -10,8 +11,8 @@ from ..entities.author import Author
 from ..entities.genre import Genre
 from ..entities.text import Text
 from ..models.abstract_model_provider import AbstractModelProvider
-from ..schemas.requests import CreateTextForm
-from ..schemas.responses import TextItemResponse, NearestTextItem, NearestTextsResponse
+from ..schemas.requests import CreateTextForm, EditTextForm
+from ..schemas.responses import TextItemResponse, NearestTextItem, NearestTextsResponse, TextEditResponse
 
 
 logger = structlog.get_logger(__name__)
@@ -49,6 +50,22 @@ class TextService:
         author_ids = await self._get_available_author_ids(user_id, session)
         texts = await self.crud.get_available(author_ids, session=session)
 
+        admin_users_ids = \
+            [user.id for user in await self.user_service.get_admin_users(session=session)]
+
+        if self.user_service.is_user_admin(user_id):
+            return [
+                TextItemResponse(
+                    text_id=t.id,
+                    text=t.text,
+                    author_id=t.author_id,
+                    author=str(t.author),
+                    genre=str(t.genre),
+                    provided_by=t.provided_by_user,
+                )
+                for t in texts
+            ]
+            
         return [
             TextItemResponse(
                 text_id=t.id,
@@ -56,14 +73,20 @@ class TextService:
                 author_id=t.author_id,
                 author=str(t.author),
                 genre=str(t.genre),
+                provided_by=t.provided_by_user,
             )
             for t in texts
+            if t.provided_by_user in [user_id, *admin_users_ids]
         ]
 
     async def get_texts_of_author(
-            self, author_id: uuid.UUID, user_id, session
-    ) -> List[TextItemResponse]:
+            self, author_id: uuid.UUID,
+            user_id, session
+    ) -> List[Text]:
         available_ids = await self._get_available_author_ids(user_id, session)
+
+        admin_users_ids = \
+            [user.id for user in await self.user_service.get_admin_users(session=session)]
 
         if author_id not in available_ids:
             logger.error("texts.get_texts_of_author.not_available", user_id=user_id, author_id=author_id)
@@ -73,6 +96,19 @@ class TextService:
 
         texts = await self.crud.get_by_author(author_id, session=session)
 
+        if self.user_service.is_user_admin(user_id):
+            return texts
+        else:
+            return [
+                t for t in texts if t.provided_by_user in [user_id, *admin_users_ids]
+            ]
+
+    async def get_texts_of_author_formatted(
+            self, author_id: uuid.UUID, user_id, session
+    ) -> List[TextItemResponse]:
+
+        texts = await self.get_texts_of_author(author_id, user_id, session=session)
+
         return [
             TextItemResponse(
                 text_id=t.id,
@@ -80,6 +116,7 @@ class TextService:
                 author_id=t.author_id,
                 author=str(t.author),
                 genre=str(t.genre),
+                provided_by=t.provided_by_user,
             )
             for t in texts
         ]
@@ -90,6 +127,10 @@ class TextService:
             embedding = embedding[0]
         logger.debug("texts.embedding.generated")
         return embedding
+
+    async def _ensure_text_not_exists(self, text: str, session) -> None:
+        if await self.crud.exists_by_text(text, session=session):
+            raise ValueError("Text already exists in database")
 
     async def add_text_entity(
             self,
@@ -102,6 +143,7 @@ class TextService:
         # без проверки на доступность автора юзеру для загрузки из csv
 
         user = await self.user_service.get_user_by_id(user_id, session=session)
+        await self._ensure_text_not_exists(text, session)
         embedding = self._embed(text)
 
         result =  await self.crud.create(
@@ -119,14 +161,6 @@ class TextService:
     async def add_text(
             self, form: CreateTextForm, user_id, session
     ) -> TextItemResponse:
-        available_ids = await self._get_available_author_ids(user_id, session)
-
-        if form.author_id not in available_ids:
-            logger.error("texts.add_text_for_author.not_available", user_id=user_id, author_id=form.author_id)
-            raise HTTPException(
-                status_code=403, detail="Author is not available to you"
-            )
-
         try:
             genre = await self.genre_crud.get_by_name(
                 form.genre_name, session=session
@@ -135,12 +169,13 @@ class TextService:
             logger.error("texts.add_text_for_author.genre_not_found", user_id=user_id, genre=form.genre_name)
             raise HTTPException(status_code=404, detail="Genre not found")
 
-        author = await self.author_service.crud.select_where(
-            Author.id == form.author_id, session=session
+        author = await self.author_service.ensure_author_provided_by_user(
+            form.author_id, user_id, session=session
         )
 
         user = await self.user_service.get_user_by_id(user_id, session=session)
 
+        await self._ensure_text_not_exists(form.text, session)
         embedding = self._embed(form.text)
 
         text_obj = await self.crud.create(
@@ -159,6 +194,7 @@ class TextService:
             author_id=author.id,
             author=str(author),
             genre=str(genre),
+            provided_by=text_obj.provided_by_user,
         )
 
     async def find_nearest(
@@ -192,11 +228,18 @@ class TextService:
                 )
             search_author_ids = author_ids
 
+        texts_ids = await self.list_available(user_id, session)
+        texts_ids = [
+            t.text_id for t in texts_ids
+            if t.author_id in search_author_ids
+        ]
+
         embedding = self._embed(text)
 
         results = await self.crud.find_nearest(
             embedding=embedding,
-            author_ids=search_author_ids,
+            #author_ids=search_author_ids,
+            text_ids=texts_ids,
             k=k,
             session=session,
         )
@@ -215,3 +258,53 @@ class TextService:
         logger.info("texts.find_nearest.finished")
 
         return NearestTextsResponse(items=items)
+
+    async def delete_text(self, text_id, user_id, session):
+        text = await self.crud.get_by_id(text_id, session=session)
+        user = await self.user_service.get_user_by_id(user_id, session=session)
+
+        is_admin_user = await self.user_service.is_user_admin(user)
+
+        if text.provided_by_user != user_id and not is_admin_user:
+            raise HTTPException(
+                403,
+                "Text can be deleted only by user uploaded given text or admin users"
+            )
+
+        await self.crud.delete(text, session=session)
+
+    async def edit_text(
+            self,
+            author_id,
+            form: EditTextForm,
+            user_id,
+            session,
+    ) -> TextEditResponse:
+        updates = form.model_dump(exclude_unset=True)
+        if not updates:
+            raise HTTPException(HTTP_400_BAD_REQUEST, "No fields to update")
+
+        self._ensure_text_not_exists(form.text, session)
+
+        user = await self.user_service.get_user_by_id(user_id, session=session)
+
+        text = await self.crud.get_by_id(author_id, session=session)
+
+
+        if not await self.user_service.is_user_admin(user) and not text.provided_by_user == user_id:
+            raise HTTPException(
+                403,
+                "Text can be edited only by admin or the user who added them"
+            )
+
+        text = await self.crud.update(text, updates, session=session)
+
+        if 'text' in updates:
+            embedding = self._embed(text.text)
+            text = await self.crud.update_embedding(text, embedding, session=session)
+
+        return TextEditResponse(
+            id=text.id,
+            text=text.text,
+        )
+

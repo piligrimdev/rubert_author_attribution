@@ -9,7 +9,8 @@ from ..crud.abstract_crud_db_provider import AlreadyExistsInDB, NotFoundInDB
 from ..crud.entities.author import AuthorCRUDDatabaseProvider
 from ..entities import User, Author
 
-from ..schemas.requests import CreateAuthorForm, GetAuthorForm
+from ..schemas.requests import CreateAuthorForm, GetAuthorForm, EditAuthorForm
+from ..schemas.responses import AuthorEditResponse
 
 logger = structlog.get_logger(__name__)
 
@@ -147,6 +148,18 @@ class AuthorService:
             session=session
         )
 
+    async def get_by_full_name(self, name: str, surname: str, last_name: str, user_id, session):
+        admin_users = await self._get_admins_and_requester(user_id, session)
+
+
+        return await self.crud.get_by_full_name(
+            name,
+            surname,
+            last_name,
+            admin_users,
+            session=session
+        )
+
     async def get_by_part_name(self, form: GetAuthorForm, user_id, session):
 
         if not any([form.name, form.surname, form.last_name]):
@@ -168,4 +181,77 @@ class AuthorService:
         return await self.crud.get_by_provided_user(
             user,
             session=session
+        )
+
+    async def ensure_author_provided_by_user(
+            self, author_id, user_id, session
+    ) -> Author:
+        user = await self.user_service.get_user_by_id(user_id, session=session)
+
+        if await self.user_service.is_user_admin(user):
+            return await self.crud.get_by_id(author_id, session=session)
+
+        try:
+            return await self.crud.get_by_id_and_provided_user(
+                author_id, user_id, session=session
+            )
+        except NotFoundInDB:
+            logger.error(
+                "authors.ensure_author_provided_by_user.not_owner",
+                user_id=user_id,
+                author_id=author_id,
+            )
+            raise HTTPException(
+                status_code=403,
+                detail="Text can be added only to authors you created",
+            )
+
+    async def delete_author(self, author_id, user_id, session):
+        author = await self.crud.get_by_id(author_id, session=session)
+        user = await self.user_service.get_user_by_id(user_id, session=session)
+
+        if await self.user_service.is_user_admin(user):
+            await self.crud.delete(author, session=session)
+            return
+
+        if author.provided_by_user == user_id:
+            await self.crud.delete(author, session=session)
+            return
+
+        raise HTTPException(
+            403,
+            "Author can be deleted only by admin or the user who added them",
+        )
+
+    # services/author_service.py
+
+    async def edit_author(
+            self,
+            author_id,
+            form: EditAuthorForm,
+            user_id,
+            session,
+    ) -> GetAuthorForm:
+        updates = form.model_dump(exclude_unset=True)
+        if not updates:
+            raise HTTPException(HTTP_400_BAD_REQUEST, "No fields to update")
+
+        user = await self.user_service.get_user_by_id(user_id, session=session)
+
+        author = await self.crud.get_by_id(author_id, session=session)
+
+        if not await self.user_service.is_user_admin(user) and not author.provided_by_user == user_id:
+            raise HTTPException(
+                403,
+                "Author can be edited only by admin or the user who added them"
+            )
+
+        author = await self.crud.update(author, updates, session=session)
+
+        return AuthorEditResponse(
+            id=author.id,
+            name=author.name,
+            surname=author.surname,
+            last_name=author.last_name,
+            description=author.description,
         )

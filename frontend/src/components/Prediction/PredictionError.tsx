@@ -1,6 +1,7 @@
 import Alert from "@mui/material/Alert";
 import AlertTitle from "@mui/material/AlertTitle";
 import type { AxiosError } from "axios";
+import { strings } from "@/i18n/strings";
 
 interface Props {
   error: AxiosError;
@@ -9,12 +10,12 @@ interface Props {
 export default function PredictionError({ error }: Props) {
   const message =
     error.response?.status === 422
-      ? "Сервер не смог обработать запрос. Проверьте введённый текст."
-      : error.message || "Произошла неизвестная ошибка";
+      ? strings.attribution.requestValidationError
+      : error.message || strings.attribution.unknownError;
 
   return (
     <Alert severity="error" sx={{ mt: 3 }}>
-      <AlertTitle>Ошибка</AlertTitle>
+      <AlertTitle>{strings.common.error}</AlertTitle>
       {message}
     </Alert>
   );

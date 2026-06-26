@@ -20,7 +20,8 @@ class User(Base, WithIDMixin):
     username: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String, nullable=False)
 
-    role_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("role.id"))
+    role_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("role.id", ondelete="CASCADE"))
+    #role_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("role.id"))
     role: Mapped["Role"] = relationship()
 
     def __init__(self, username, password_hash, role):

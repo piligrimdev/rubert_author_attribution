@@ -12,8 +12,9 @@ import AddTextForm from "@/components/Authors/AddTextForm";
 import { useCreateAuthor } from "@/hooks/useAuthors";
 import { useAddText } from "@/hooks/useTexts";
 import type { CreateAuthorRequest, Author } from "@/types/author";
+import { format, strings } from "@/i18n/strings";
 
-const STEPS = ["Данные автора", "Добавление текста"];
+const STEPS = [strings.addAuthor.stepAuthor, strings.addAuthor.stepText];
 
 export default function AddAuthorPage() {
   const navigate = useNavigate();
@@ -56,8 +57,8 @@ export default function AddAuthorPage() {
 
   return (
     <Stack spacing={3}>
-      <PageTitle subtitle="Создайте автора и добавьте его текст в базу данных">
-        Новый автор
+      <PageTitle subtitle={strings.addAuthor.subtitle}>
+        {strings.addAuthor.title}
       </PageTitle>
 
       <Stepper activeStep={activeStep} sx={{ mb: 1 }}>
@@ -70,12 +71,16 @@ export default function AddAuthorPage() {
 
       {createAuthorMutation.error && (
         <Alert severity="error">
-          Не удалось создать автора: {createAuthorMutation.error.message}
+          {format(strings.addAuthor.createError, {
+            message: createAuthorMutation.error.message,
+          })}
         </Alert>
       )}
       {addTextMutation.error && (
         <Alert severity="error">
-          Не удалось добавить текст: {addTextMutation.error.message}
+          {format(strings.addAuthor.addTextError, {
+            message: addTextMutation.error.message,
+          })}
         </Alert>
       )}
 
@@ -89,8 +94,7 @@ export default function AddAuthorPage() {
       {activeStep === 1 && (
         <>
           <Alert severity="success">
-            Автор <strong>{fullName}</strong> успешно создан! Теперь добавьте
-            текст.
+            {format(strings.addAuthor.createdSuccess, { name: fullName })}
           </Alert>
           <AddTextForm
             onSubmit={handleAddText}
@@ -101,7 +105,7 @@ export default function AddAuthorPage() {
             onClick={() => navigate(`/authors/${createdAuthor!.id}`)}
             sx={{ alignSelf: "flex-start" }}
           >
-            Пропустить и перейти к автору
+            {strings.addAuthor.skipToAuthor}
           </Button>
         </>
       )}

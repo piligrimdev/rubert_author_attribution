@@ -4,52 +4,67 @@ import {
   useState,
   useCallback,
   useMemo,
+  useEffect,
   type ReactNode,
 } from "react";
-import { login as apiLogin, register as apiRegister } from "@/api/authApi";
+import {
+  login as apiLogin,
+  register as apiRegister,
+  logout as apiLogout,
+  fetchMe,
+} from "@/api/authApi";
 import type { LoginRequest, RegisterRequest } from "@/types/auth";
 
 interface AuthState {
-  token: string | null;
   isAuthenticated: boolean;
+  isBootstrapping: boolean;
   login: (data: LoginRequest) => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(() =>
-    localStorage.getItem("access_token"),
-  );
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isBootstrapping, setIsBootstrapping] = useState(true);
+
+  useEffect(() => {
+    localStorage.removeItem("access_token");
+
+    fetchMe()
+      .then(() => setIsAuthenticated(true))
+      .catch(() => setIsAuthenticated(false))
+      .finally(() => setIsBootstrapping(false));
+  }, []);
 
   const login = useCallback(async (data: LoginRequest) => {
-    const res = await apiLogin(data);
-    localStorage.setItem("access_token", res.access_token);
-    setToken(res.access_token);
+    await apiLogin(data);
+    setIsAuthenticated(true);
   }, []);
 
   const register = useCallback(async (data: RegisterRequest) => {
-    const res = await apiRegister(data);
-    localStorage.setItem("access_token", res.access_token);
-    setToken(res.access_token);
+    await apiRegister(data);
+    setIsAuthenticated(true);
   }, []);
 
-  const logout = useCallback(() => {
-    localStorage.removeItem("access_token");
-    setToken(null);
+  const logout = useCallback(async () => {
+    try {
+      await apiLogout();
+    } finally {
+      setIsAuthenticated(false);
+    }
   }, []);
 
   const value = useMemo<AuthState>(
     () => ({
-      token,
-      isAuthenticated: !!token,
+      isAuthenticated,
+      isBootstrapping,
       login,
       register,
       logout,
     }),
-    [token, login, register, logout],
+    [isAuthenticated, isBootstrapping, login, register, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

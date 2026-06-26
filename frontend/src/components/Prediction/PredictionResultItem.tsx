@@ -3,6 +3,7 @@ import Typography from "@mui/material/Typography";
 import Chip from "@mui/material/Chip";
 import Stack from "@mui/material/Stack";
 import type { NearestTextItem } from "@/types/prediction";
+import { format, strings } from "@/i18n/strings";
 
 interface Props {
   item: NearestTextItem;
@@ -38,14 +39,16 @@ export default function PredictionResultItem({ item, rank }: Props) {
           {item.author}
         </Typography>
         {isTop && (
-          <Chip label="Ближайший" color="primary" size="small" />
+          <Chip label={strings.attribution.closestChip} color="primary" size="small" />
         )}
         <Box sx={{ flexGrow: 1 }} />
         <Chip
           label={
             item.distance != null
-              ? `Расстояние: ${item.distance.toFixed(4)}`
-              : "Без эмбеддинга"
+              ? format(strings.attribution.distance, {
+                  value: item.distance.toFixed(4),
+                })
+              : strings.attribution.noEmbedding
           }
           size="small"
           variant="outlined"

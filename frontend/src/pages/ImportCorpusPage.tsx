@@ -14,6 +14,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import PageTitle from "@/components/common/PageTitle";
 import { useCorpusImport } from "@/hooks/useCorpusImport";
+import { format, strings } from "@/i18n/strings";
 
 function formatAxiosError(err: { message: string; response?: { data?: unknown } }): string {
   const detail = (err.response?.data as { detail?: string } | undefined)?.detail;
@@ -56,35 +57,37 @@ export default function ImportCorpusPage() {
           startIcon={<ArrowBackIcon />}
           sx={{ mb: 2 }}
         >
-          К списку авторов
+          {strings.common.backToAuthors}
         </Button>
-        <PageTitle subtitle="Загрузите CSV с колонками author, text и source_type (жанр) для массового добавления текстов в базу">
-          Импорт корпуса из CSV
+        <PageTitle subtitle={strings.importCorpus.subtitle}>
+          {strings.importCorpus.title}
         </PageTitle>
       </Box>
 
       <Paper sx={{ p: 3 }}>
         <Typography variant="h6" gutterBottom>
-          Формат файла
+          {strings.importCorpus.formatTitle}
         </Typography>
         <Typography variant="body2" color="text.secondary" paragraph>
-          Файл должен быть в кодировке UTF-8, расширение <strong>.csv</strong>.
-          Обязательные колонки:
+          {strings.importCorpus.formatDescription}
         </Typography>
         <List dense disablePadding sx={{ mb: 2 }}>
           <ListItem disableGutters>
             <ListItemText
-              primary="author"
-              secondary="Имя автора (как в базе или новое — будет создан)"
+              primary={strings.importCorpus.columnAuthor}
+              secondary={strings.importCorpus.columnAuthorHint}
             />
           </ListItem>
           <ListItem disableGutters>
-            <ListItemText primary="text" secondary="Текст фрагмента" />
+            <ListItemText
+              primary={strings.importCorpus.columnText}
+              secondary={strings.importCorpus.columnTextHint}
+            />
           </ListItem>
           <ListItem disableGutters>
             <ListItemText
-              primary="source_type"
-              secondary="Жанр / тип источника (например: prose, poetry, social)"
+              primary={strings.importCorpus.columnSourceType}
+              secondary={strings.importCorpus.columnSourceTypeHint}
             />
           </ListItem>
         </List>
@@ -103,11 +106,14 @@ export default function ImportCorpusPage() {
               onClick={() => fileInputRef.current?.click()}
               disabled={isRunning}
             >
-              Выбрать файл
+              {strings.importCorpus.selectFile}
             </Button>
             {selectedFile && (
               <Typography variant="body2" color="text.secondary">
-                {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} КБ)
+                {format(strings.importCorpus.fileSizeKb, {
+                  name: selectedFile.name,
+                  size: (selectedFile.size / 1024).toFixed(1),
+                })}
               </Typography>
             )}
           </Box>
@@ -121,7 +127,7 @@ export default function ImportCorpusPage() {
             onClick={handleSubmit}
             sx={{ alignSelf: "flex-start" }}
           >
-            Загрузить и импортировать
+            {strings.importCorpus.upload}
           </Button>
         </Stack>
       </Paper>
@@ -129,7 +135,7 @@ export default function ImportCorpusPage() {
       {isRunning && progress !== null && (
         <Paper sx={{ p: 2 }}>
           <Typography variant="body2" color="text.secondary" gutterBottom>
-            Импорт выполняется… {Math.round(progress)}%
+            {format(strings.importCorpus.progress, { percent: Math.round(progress) })}
           </Typography>
           <LinearProgress variant="determinate" value={progress} />
         </Paper>
@@ -142,10 +148,36 @@ export default function ImportCorpusPage() {
       )}
 
       {importMutation.isSuccess && result && (
-        <Alert severity="success">
-          Импорт завершён: добавлено <strong>{result.added}</strong> фрагментов,
-          пропущено пустых — {result.skipped_empty}, ошибок — {result.errors}.
-        </Alert>
+        <Stack spacing={2}>
+          <Alert severity="success">
+            {format(strings.importCorpus.success, {
+              added: result.added,
+              skipped: result.skipped_empty,
+            })}
+          </Alert>
+          {result.errors.length > 0 && (
+            <Alert severity="warning">
+              <Typography variant="body2" gutterBottom>
+                {format(strings.importCorpus.errorsTitle, {
+                  count: result.errors.length,
+                })}
+              </Typography>
+              <List dense disablePadding>
+                {result.errors.map((item) => (
+                  <ListItem key={item.ind} disableGutters sx={{ py: 0 }}>
+                    <ListItemText
+                      primary={format(strings.importCorpus.errorRow, {
+                        row: item.ind,
+                        message: item.error,
+                      })}
+                      primaryTypographyProps={{ variant: "body2" }}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            </Alert>
+          )}
+        </Stack>
       )}
     </Stack>
   );

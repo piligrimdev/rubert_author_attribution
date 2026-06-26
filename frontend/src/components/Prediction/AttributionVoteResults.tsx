@@ -10,19 +10,19 @@ import Link from "@mui/material/Link";
 import Chip from "@mui/material/Chip";
 import type { NearestTextItem, VotesResponse } from "@/types/prediction";
 import PredictionResultItem from "./PredictionResultItem";
+import { format, strings } from "@/i18n/strings";
 
 function authorLabelForId(authorId: string, items: NearestTextItem[]): string {
   const hit = items.find((i) => i.author_id === authorId);
   return hit?.author ?? authorId;
 }
 
-/** Безопасно для ответов API с null / NaN (например, без валидных distance). */
 function formatFiniteOrDash(
   value: number | null | undefined,
   toFixedDigits: number,
 ): string {
   if (typeof value !== "number" || !Number.isFinite(value)) {
-    return "—";
+    return strings.common.dash;
   }
   return value.toFixed(toFixedDigits);
 }
@@ -31,9 +31,20 @@ function confidencePercentLabel(
   confidence: number | null | undefined,
 ): string {
   if (typeof confidence !== "number" || !Number.isFinite(confidence)) {
-    return "Сходство с ближайшим: —";
+    return strings.attribution.confidenceEmpty;
   }
-  return `Сходство с ближайшим: ${(confidence * 100).toFixed(1)} %`;
+  return format(strings.attribution.confidence, {
+    value: (confidence * 100).toFixed(1),
+  });
+}
+
+function shouldShowVotingResult(data: VotesResponse): boolean {
+  const hasAvgSim =
+    typeof data.avg_sim === "number" && Number.isFinite(data.avg_sim);
+  const hasDistance = data.items.some(
+    (item) => typeof item.distance === "number" && Number.isFinite(item.distance),
+  );
+  return hasAvgSim && hasDistance;
 }
 
 interface Props {
@@ -43,17 +54,19 @@ interface Props {
 export default function AttributionVoteResults({ data }: Props) {
   const { predicted, confidence, avg_sim, votes, items } = data;
   const sortedVotes = Object.entries(votes).sort((a, b) => b[1] - a[1]);
+  const showVotingResult = shouldShowVotingResult(data);
 
   return (
     <Fade in>
       <Stack spacing={2}>
-        {predicted ? (
+        {showVotingResult &&
+          (predicted ? (
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
-              Результат голосования
+              {strings.attribution.votingResult}
             </Typography>
             <Typography variant="body1" sx={{ mb: 1 }}>
-              Предполагаемый автор:{" "}
+              {strings.attribution.predictedAuthor}{" "}
               <Link
                 component={RouterLink}
                 to={`/authors/${predicted}`}
@@ -70,7 +83,9 @@ export default function AttributionVoteResults({ data }: Props) {
                 size="small"
               />
               <Chip
-                label={`Среднее расстояние до k соседей: ${formatFiniteOrDash(avg_sim, 4)}`}
+                label={format(strings.attribution.avgDistance, {
+                  value: formatFiniteOrDash(avg_sim, 4),
+                })}
                 variant="outlined"
                 size="small"
               />
@@ -80,13 +95,13 @@ export default function AttributionVoteResults({ data }: Props) {
                 size="small"
                 variant="outlined"
               >
-                Страница автора
+                {strings.attribution.authorPage}
               </Button>
             </Stack>
             {sortedVotes.length > 0 && (
               <>
                 <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                  Голоса среди ближайших фрагментов
+                  {strings.attribution.votesTitle}
                 </Typography>
                 <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                   {sortedVotes.map(([authorId, count]) => (
@@ -104,18 +119,15 @@ export default function AttributionVoteResults({ data }: Props) {
         ) : (
           <Alert severity="warning" sx={{ alignItems: "flex-start" }}>
             <Typography variant="body2" component="div">
-              Вероятно, автор фрагмента неизвестен модели или лучшее совпадение не проходит выбранный
-              порог схожести. Попробуйте изменить параметры:{" "}
-              <strong>k</strong>, набор <strong>авторов</strong> для сравнения,{" "}
-              <strong>порог</strong> или сам <strong>текст</strong> (длину и содержание).
+              {strings.attribution.thresholdWarning}
             </Typography>
           </Alert>
-        )}
+        ))}
 
         {items.length > 0 ? (
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
-              Ближайшие тексты
+              {strings.attribution.nearestTexts}
             </Typography>
             <Divider sx={{ mb: 1 }} />
             <Stack divider={<Divider />}>
@@ -126,7 +138,9 @@ export default function AttributionVoteResults({ data }: Props) {
           </Paper>
         ) : (
           <Paper sx={{ p: 3 }}>
-            <Typography color="text.secondary">Похожих текстов не найдено.</Typography>
+            <Typography color="text.secondary">
+              {strings.attribution.noSimilarTexts}
+            </Typography>
           </Paper>
         )}
       </Stack>

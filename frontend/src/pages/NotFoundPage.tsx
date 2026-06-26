@@ -2,6 +2,7 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import { Link } from "react-router-dom";
+import { strings } from "@/i18n/strings";
 
 export default function NotFoundPage() {
   return (
@@ -15,10 +16,10 @@ export default function NotFoundPage() {
         404
       </Typography>
       <Typography variant="h5" color="text.secondary">
-        Страница не найдена
+        {strings.notFound.title}
       </Typography>
       <Button component={Link} to="/" variant="contained" sx={{ mt: 2 }}>
-        На главную
+        {strings.notFound.backHome}
       </Button>
     </Stack>
   );

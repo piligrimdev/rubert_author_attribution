@@ -14,6 +14,10 @@ from ...entities.user import User
 class TextCRUDDatabaseProvider(AbstractCRUDDatabaseProvider):
     model = Text
 
+    async def exists_by_text(self, text: str, session: Session = None) -> bool:
+        stmt = select(Text.id).where(Text.text == text).limit(1)
+        return session.scalar(stmt) is not None
+
     async def get_by_author(
             self,
             author_id: uuid.UUID,
@@ -49,18 +53,19 @@ class TextCRUDDatabaseProvider(AbstractCRUDDatabaseProvider):
     async def find_nearest(
             self,
             embedding: list,
-            author_ids: List[uuid.UUID],
+            #author_ids: List[uuid.UUID],
+            text_ids: List[uuid.UUID],
             k: int = 5,
             session: Session = None
     ) -> list:
-        if not author_ids:
+        if not text_ids:
             return []
 
         distance = Text.embedding.cosine_distance(embedding)
 
         stmt = (
             select(Text, distance.label("distance"))
-            .where(Text.author_id.in_(author_ids))
+            .where(Text.id.in_(text_ids))
             .options(joinedload(Text.author))
             .order_by(distance)
             .limit(k)
@@ -97,3 +102,23 @@ class TextCRUDDatabaseProvider(AbstractCRUDDatabaseProvider):
         session.expunge(text_obj)
 
         return text_obj
+
+    async def get_by_id(
+            self, text_id, session: Session = None
+    ) -> Text:
+        return await self.select_where(
+            Text.id == text_id,
+            session=session
+        )
+
+    async def update_embedding(
+            self, text, embedding, session: Session = None
+    ) -> Text:
+        entity = session.merge(text)
+
+        entity.embedding = embedding
+
+        session.commit()
+        session.refresh(entity)
+        session.expunge(entity)
+        return entity

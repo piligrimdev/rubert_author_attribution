@@ -1,89 +1,17 @@
 import type { MetricBaseKey } from "@/types/authorMetrics";
+import { METRIC_BASE_KEYS } from "@/types/authorMetrics";
+import { strings } from "@/i18n/strings";
 
 export type MetricRuMeta = {
   key: MetricBaseKey;
   title: string;
   description: string;
-  /** Подпись единицы для подсказок / осей */
   unitHint: string;
 };
 
-export const METRIC_RU: Record<MetricBaseKey, MetricRuMeta> = {
-  avg_sent_len_words: {
-    key: "avg_sent_len_words",
-    title: "Средняя длина предложения",
-    description:
-      "Среднее число слов в одном предложении по всем текстам автора. Большее значение обычно означает более развёрнутые или сложные предложения.",
-    unitHint: "слов",
-  },
-  avg_word_len_chars: {
-    key: "avg_word_len_chars",
-    title: "Средняя длина слова",
-    description:
-      "Среднее число символов в слове (без пробелов). Показывает, насколько «короткие» или «длинные» слова преобладают: длинные слова часто встречаются в научном или официальном стиле.",
-    unitHint: "символов",
-  },
-  mtld: {
-    key: "mtld",
-    title: "MTLD — лексическое разнообразие",
-    description:
-      "Measure of Textual Lexical Diversity: устойчивая оценка того, насколько разнообразна лексика при разной длине фрагмента. Выше значение — богаче словарь относительно повторов.",
-    unitHint: "усл. ед.",
-  },
-  avg_tree_depth: {
-    key: "avg_tree_depth",
-    title: "Средняя глубина синтаксического дерева",
-    description:
-      "Насколько «глубоко» вложены синтаксические зависимости в предложениях. Больше глубина — как правило, более ветвистая подчинённая структура.",
-    unitHint: "уровней",
-  },
-  passive_ratio: {
-    key: "passive_ratio",
-    title: "Доля страдательного залога",
-    description:
-      "Доля конструкций со страдательным залогом среди всех предложений. Стильстический маркер: выше доля — больше пассивных конструкций.",
-    unitHint: "доля (0–1)",
-  },
-  func_word_ratio: {
-    key: "func_word_ratio",
-    title: "Доля функциональных слов",
-    description:
-      "Доля предлогов, союзов, частиц и других служебных слов. Отражает связность текста и баланс между «служебной» и «знаменательной» лексикой.",
-    unitHint: "доля (0–1)",
-  },
-  avg_clauses_per_sent: {
-    key: "avg_clauses_per_sent",
-    title: "Клауз на предложение",
-    description:
-      "Среднее число синтаксических клауз (частей) на одно предложение. Показывает, насколько предложения дробятся на подчинённые и сочинённые части.",
-    unitHint: "шт.",
-  },
-  noun_verb_ratio: {
-    key: "noun_verb_ratio",
-    title: "Соотношение существительных к глаголам",
-    description:
-      "Отношение доли существительных к доле глаголов. Высокое значение чаще связано с номинальным стилем (описание объектов), низкое — с динамикой действий.",
-    unitHint: "соотношение",
-  },
-  compression_ratio: {
-    key: "compression_ratio",
-    title: "Коэффициент сжатия текста",
-    description:
-      "Характеристика сжимаемости символьной последовательности (энтропия). Связана с повторяемостью и предсказуемостью текста на уровне символов.",
-    unitHint: "0–1",
-  },
-  flesch_reading_ease: {
-    key: "flesch_reading_ease",
-    title: "Индекс удобочитаемости Флеша",
-    description:
-      "Формальная оценка простоты чтения (для русского языка используется адаптация через textstat). Большие значения обычно соответствуют более простым предложениям и словам.",
-    unitHint: "баллы",
-  },
-  gunning_fog: {
-    key: "gunning_fog",
-    title: "Индекс туманности Ганнинга",
-    description:
-      "Оценка «сложности» текста для читателя с учётом длины предложений и полисиллабических слов. Чем выше индекс, тем тяжелее воспринимается текст.",
-    unitHint: "баллы",
-  },
-};
+export const METRIC_RU = Object.fromEntries(
+  METRIC_BASE_KEYS.map((key) => [
+    key,
+    { key, ...strings.metrics.items[key] },
+  ]),
+) as Record<MetricBaseKey, MetricRuMeta>;

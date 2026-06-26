@@ -12,6 +12,7 @@ import LoginIcon from "@mui/icons-material/Login";
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import { useAuth } from "@/context/AuthContext";
 import type { LoginRequest } from "@/types/auth";
+import { strings } from "@/i18n/strings";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -34,8 +35,8 @@ export default function LoginPage() {
     } catch (err: any) {
       setError(
         err.response?.status === 401
-          ? "Неверный логин или пароль"
-          : err.response?.data?.detail || "Ошибка авторизации",
+          ? strings.auth.invalidCredentials
+          : err.response?.data?.detail || strings.auth.authError,
       );
     } finally {
       setLoading(false);
@@ -58,13 +59,13 @@ export default function LoginPage() {
           variant="h4"
           sx={{ fontFamily: "'Playfair Display', serif" }}
         >
-          Атрибуция текста
+          {strings.app.title}
         </Typography>
       </Stack>
 
       <Paper sx={{ p: 4, width: "100%", maxWidth: 420 }}>
         <Typography variant="h5" gutterBottom textAlign="center">
-          Вход
+          {strings.auth.loginTitle}
         </Typography>
 
         {error && (
@@ -76,16 +77,16 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit(onSubmit)} noValidate>
           <Stack spacing={2}>
             <TextField
-              {...register("username", { required: "Введите логин" })}
-              label="Логин"
+              {...register("username", { required: strings.auth.usernameRequired })}
+              label={strings.common.login}
               fullWidth
               autoFocus
               error={!!errors.username}
               helperText={errors.username?.message}
             />
             <TextField
-              {...register("password", { required: "Введите пароль" })}
-              label="Пароль"
+              {...register("password", { required: strings.auth.passwordRequired })}
+              label={strings.common.password}
               type="password"
               fullWidth
               error={!!errors.password}
@@ -99,7 +100,7 @@ export default function LoginPage() {
               loading={loading}
               startIcon={<LoginIcon />}
             >
-              Войти
+              {strings.auth.loginButton}
             </Button>
           </Stack>
         </form>
@@ -109,14 +110,14 @@ export default function LoginPage() {
           textAlign="center"
           sx={{ mt: 2, color: "text.secondary" }}
         >
-          Нет аккаунта?{" "}
+          {strings.auth.noAccount}{" "}
           <Typography
             component={Link}
             to="/register"
             variant="body2"
             sx={{ color: "primary.main", textDecoration: "none" }}
           >
-            Зарегистрироваться
+            {strings.auth.registerButton}
           </Typography>
         </Typography>
       </Paper>

@@ -1,4 +1,5 @@
-import { useParams, Link } from "react-router-dom";
+import { useState } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import Stack from "@mui/material/Stack";
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
@@ -12,11 +13,23 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import ArticleIcon from "@mui/icons-material/Article";
-import { useAuthors } from "@/hooks/useAuthors";
-import { useTextsByAuthor, useAddText } from "@/hooks/useTexts";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import { useAuthors, useDeleteAuthor, useEditAuthor } from "@/hooks/useAuthors";
+import { useTextsByAuthor, useAddText, useDeleteText } from "@/hooks/useTexts";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useDeleteWithDialogs } from "@/hooks/useDeleteWithDialogs";
 import AddTextForm from "@/components/Authors/AddTextForm";
+import EditAuthorForm from "@/components/Authors/EditAuthorForm";
+import AuthorTextItem from "@/components/Authors/AuthorTextItem";
 import AuthorMetricsPanel from "@/components/Authors/metrics/AuthorMetricsPanel";
-import type { Author } from "@/types/author";
+import ConfirmDialog from "@/components/common/ConfirmDialog";
+import ForbiddenDialog from "@/components/common/ForbiddenDialog";
+import { canDeleteAuthor, canEditAuthor } from "@/utils/permissions";
+import { getApiErrorDetail, isForbiddenError } from "@/utils/apiError";
+import { format, strings } from "@/i18n/strings";
+import type { Author, EditAuthorRequest } from "@/types/author";
+import type { TextItem } from "@/types/text";
 
 function formatFullName(a: Author): string {
   return [a.surname, a.name, a.last_name].filter(Boolean).join(" ");
@@ -24,16 +37,49 @@ function formatFullName(a: Author): string {
 
 export default function AuthorDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { data: authors, isLoading: authorsLoading } = useAuthors();
+  const { data: currentUser } = useCurrentUser();
   const {
     data: texts,
     isLoading: textsLoading,
     error: textsError,
   } = useTextsByAuthor(id);
   const addTextMutation = useAddText();
+  const deleteAuthorMutation = useDeleteAuthor();
+  const deleteTextMutation = useDeleteText();
+  const editAuthorMutation = useEditAuthor();
+
+  const [isEditingAuthor, setIsEditingAuthor] = useState(false);
+  const [editAuthorError, setEditAuthorError] = useState<string | null>(null);
+  const [editAuthorForbidden, setEditAuthorForbidden] = useState<string | null>(null);
 
   const author = authors?.find((a) => a.id === id);
-  const isAdmin = author?.provided_by === null;
+  const canDeleteThisAuthor = author ? canDeleteAuthor(author, currentUser) : false;
+  const canEditThisAuthor = author ? canEditAuthor(author, currentUser) : false;
+
+  const deleteAuthorDialog = useDeleteWithDialogs({
+    deleteFn: async (target: Author) => {
+      await deleteAuthorMutation.mutateAsync(target.id);
+    },
+    confirmTitle: strings.dialogs.deleteAuthorTitle,
+    getConfirmMessage: (target) =>
+      format(strings.dialogs.deleteAuthorMessage, { name: formatFullName(target) }),
+    forbiddenFallback: strings.dialogs.deleteAuthorForbidden,
+    onSuccess: () => navigate("/authors"),
+  });
+
+  const deleteTextDialog = useDeleteWithDialogs({
+    deleteFn: async (target: TextItem) => {
+      await deleteTextMutation.mutateAsync({
+        textId: target.text_id,
+        authorId: target.author_id,
+      });
+    },
+    confirmTitle: strings.dialogs.deleteTextTitle,
+    getConfirmMessage: () => strings.dialogs.deleteTextMessage,
+    forbiddenFallback: strings.dialogs.deleteTextForbidden,
+  });
 
   if (authorsLoading) {
     return (
@@ -46,9 +92,9 @@ export default function AuthorDetailPage() {
   if (!author) {
     return (
       <Alert severity="warning">
-        Автор не найден.{" "}
+        {strings.authorDetail.notFound}{" "}
         <Typography component={Link} to="/authors" color="primary">
-          Вернуться к списку
+          {strings.authorDetail.backToList}
         </Typography>
       </Alert>
     );
@@ -62,6 +108,34 @@ export default function AuthorDetailPage() {
     });
   };
 
+  const handleEditAuthor = async (data: EditAuthorRequest) => {
+    if (Object.keys(data).length === 0) {
+      setEditAuthorError(strings.authorDetail.noChanges);
+      return;
+    }
+
+    setEditAuthorError(null);
+    try {
+      await editAuthorMutation.mutateAsync({
+        authorId: author.id,
+        data,
+      });
+      setIsEditingAuthor(false);
+    } catch (err) {
+      if (isForbiddenError(err)) {
+        setIsEditingAuthor(false);
+        setEditAuthorForbidden(
+          getApiErrorDetail(
+            err,
+            strings.authorDetail.editForbidden,
+          ),
+        );
+      } else {
+        setEditAuthorError(getApiErrorDetail(err, strings.authorDetail.saveFailed));
+      }
+    }
+  };
+
   return (
     <Stack spacing={3}>
       <Button
@@ -70,43 +144,104 @@ export default function AuthorDetailPage() {
         startIcon={<ArrowBackIcon />}
         sx={{ alignSelf: "flex-start", color: "text.secondary" }}
       >
-        К списку авторов
+        {strings.common.backToAuthors}
       </Button>
 
       <Paper sx={{ p: 3 }}>
         <Stack spacing={1}>
-          <Typography
-            variant="h4"
-            sx={{ fontFamily: "'Playfair Display', serif" }}
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            alignItems="flex-start"
+            spacing={2}
           >
-            {formatFullName(author)}
-          </Typography>
-          <Stack direction="row" spacing={1}>
-            {isAdmin && (
-              <Chip
-                icon={<AdminPanelSettingsIcon />}
-                label="Добавлен администратором"
-                size="small"
-                variant="outlined"
-              />
+            {!isEditingAuthor ? (
+              <Typography
+                variant="h4"
+                sx={{ fontFamily: "'Playfair Display', serif" }}
+              >
+                {formatFullName(author)}
+              </Typography>
+            ) : (
+              <Box sx={{ flex: 1 }} />
             )}
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              {canEditThisAuthor && !isEditingAuthor && (
+                <Button
+                  variant="outlined"
+                  startIcon={<EditOutlinedIcon />}
+                  onClick={() => {
+                    setIsEditingAuthor(true);
+                    setEditAuthorError(null);
+                  }}
+                >
+                  {strings.common.edit}
+                </Button>
+              )}
+              {canDeleteThisAuthor && !isEditingAuthor && (
+                <Button
+                  color="error"
+                  variant="outlined"
+                  startIcon={<DeleteOutlineIcon />}
+                  onClick={() => deleteAuthorDialog.requestDelete(author)}
+                >
+                  {strings.authorDetail.deleteAuthor}
+                </Button>
+              )}
+            </Stack>
           </Stack>
-          {author.description ? (
-            <Typography
-              variant="body1"
-              color="text.secondary"
-              sx={{ mt: 1, whiteSpace: "pre-line", lineHeight: 1.7 }}
-            >
-              {author.description}
-            </Typography>
-          ) : null}
+
+          {isEditingAuthor ? (
+            <EditAuthorForm
+              author={author}
+              onSubmit={handleEditAuthor}
+              onCancel={() => {
+                setIsEditingAuthor(false);
+                setEditAuthorError(null);
+              }}
+              isLoading={editAuthorMutation.isPending}
+            />
+          ) : (
+            <>
+              <Stack direction="row" spacing={1}>
+                {author.provided_by === null && (
+                  <Chip
+                    icon={<AdminPanelSettingsIcon />}
+                    label={strings.common.addedByAdmin}
+                    size="small"
+                    variant="outlined"
+                  />
+                )}
+              </Stack>
+              {author.description ? (
+                <Typography
+                  variant="body1"
+                  color="text.secondary"
+                  sx={{ mt: 1, whiteSpace: "pre-line", lineHeight: 1.7 }}
+                >
+                  {author.description}
+                </Typography>
+              ) : null}
+            </>
+          )}
+
+          {editAuthorError && (
+            <Alert severity="error" sx={{ mt: 1 }}>
+              {editAuthorError}
+            </Alert>
+          )}
+          {deleteAuthorDialog.errorMessage && (
+            <Alert severity="error" sx={{ mt: 1 }}>
+              {deleteAuthorDialog.errorMessage}
+            </Alert>
+          )}
         </Stack>
       </Paper>
 
       <Paper sx={{ p: 3 }}>
         <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
           <BarChartIcon color="primary" />
-          <Typography variant="h6">Статистика автора</Typography>
+          <Typography variant="h6">{strings.authorDetail.statsTitle}</Typography>
         </Stack>
         <Divider sx={{ mb: 2 }} />
         <Box
@@ -121,7 +256,7 @@ export default function AuthorDetailPage() {
               {texts?.length ?? "—"}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Количество текстов в базе
+              {strings.authorDetail.textCountLabel}
             </Typography>
           </Paper>
         </Box>
@@ -133,11 +268,10 @@ export default function AuthorDetailPage() {
         authorsForCompare={authors ?? []}
       />
 
-      {/* Texts section */}
       <Paper sx={{ p: 3 }}>
         <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
           <ArticleIcon color="primary" />
-          <Typography variant="h6">Тексты автора</Typography>
+          <Typography variant="h6">{strings.authorDetail.textsTitle}</Typography>
         </Stack>
         <Divider sx={{ mb: 2 }} />
 
@@ -149,60 +283,77 @@ export default function AuthorDetailPage() {
 
         {textsError && (
           <Alert severity="error" sx={{ mb: 2 }}>
-            Не удалось загрузить тексты: {textsError.message}
+            {format(strings.authorDetail.textsLoadError, { message: textsError.message })}
           </Alert>
         )}
 
         {texts && !texts.length && (
-          <Typography
-            color="text.secondary"
-            sx={{ py: 2, textAlign: "center" }}
-          >
-            У автора пока нет текстов.
+          <Typography color="text.secondary" sx={{ py: 2, textAlign: "center" }}>
+            {strings.authorDetail.noTexts}
           </Typography>
         )}
 
         {texts && texts.length > 0 && (
           <Stack spacing={2}>
             {texts.map((t) => (
-              <Paper key={t.text_id} variant="outlined" sx={{ p: 2 }}>
-                <Stack
-                  direction="row"
-                  justifyContent="space-between"
-                  alignItems="center"
-                  sx={{ mb: 1 }}
-                >
-                  <Chip label={t.genre} size="small" variant="outlined" />
-                </Stack>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    whiteSpace: "pre-line",
-                    maxHeight: 200,
-                    overflow: "auto",
-                    lineHeight: 1.6,
-                  }}
-                >
-                  {t.text}
-                </Typography>
-              </Paper>
+              <AuthorTextItem
+                key={t.text_id}
+                text={t}
+                currentUser={currentUser}
+                onDelete={(text) => deleteTextDialog.requestDelete(text)}
+              />
             ))}
           </Stack>
         )}
+
+        {deleteTextDialog.errorMessage && (
+          <Alert severity="error" sx={{ mt: 2 }}>
+            {deleteTextDialog.errorMessage}
+          </Alert>
+        )}
       </Paper>
 
-      {/* Add text form */}
       {addTextMutation.error && (
         <Alert severity="error">
-          Не удалось добавить текст: {addTextMutation.error.message}
+          {format(strings.authorDetail.addTextError, { message: addTextMutation.error.message })}
         </Alert>
       )}
       {addTextMutation.isSuccess && (
-        <Alert severity="success">Текст успешно добавлен!</Alert>
+        <Alert severity="success">{strings.authorDetail.addTextSuccess}</Alert>
       )}
-      <AddTextForm
-        onSubmit={handleAddText}
-        isLoading={addTextMutation.isPending}
+      <AddTextForm onSubmit={handleAddText} isLoading={addTextMutation.isPending} />
+
+      <ConfirmDialog
+        open={deleteAuthorDialog.isConfirmOpen}
+        title={deleteAuthorDialog.confirmTitle}
+        message={deleteAuthorDialog.confirmMessage}
+        isLoading={deleteAuthorDialog.isDeleting}
+        onConfirm={deleteAuthorDialog.confirmDelete}
+        onCancel={deleteAuthorDialog.cancelDelete}
+      />
+      <ForbiddenDialog
+        open={deleteAuthorDialog.isForbiddenOpen}
+        message={deleteAuthorDialog.forbiddenMessage ?? ""}
+        onClose={deleteAuthorDialog.closeForbidden}
+      />
+
+      <ConfirmDialog
+        open={deleteTextDialog.isConfirmOpen}
+        title={deleteTextDialog.confirmTitle}
+        message={deleteTextDialog.confirmMessage}
+        isLoading={deleteTextDialog.isDeleting}
+        onConfirm={deleteTextDialog.confirmDelete}
+        onCancel={deleteTextDialog.cancelDelete}
+      />
+      <ForbiddenDialog
+        open={deleteTextDialog.isForbiddenOpen}
+        message={deleteTextDialog.forbiddenMessage ?? ""}
+        onClose={deleteTextDialog.closeForbidden}
+      />
+      <ForbiddenDialog
+        open={editAuthorForbidden !== null}
+        message={editAuthorForbidden ?? ""}
+        onClose={() => setEditAuthorForbidden(null)}
       />
     </Stack>
   );

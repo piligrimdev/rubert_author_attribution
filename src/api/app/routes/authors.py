@@ -2,6 +2,7 @@ from typing import Annotated
 
 import structlog
 from fastapi import APIRouter, Depends, Form, UploadFile
+from starlette.responses import Response
 
 from ..core.dependencies import (
     CurrentUserUUID,
@@ -13,10 +14,11 @@ from ..core.services import (
     metrics_service,
     corpus_import_service,
 )
-from ..schemas.requests import CreateAuthorForm, GetMetricsRequest
+from ..schemas.requests import CreateAuthorForm, GetMetricsRequest, EditAuthorForm
 from ..schemas.responses import (
     CorpusImportTaskStatus,
     StartCorpusImportTaskResponse,
+    AuthorEditResponse
 )
 
 authors_routes = APIRouter(prefix="/authors", tags=["authors"])
@@ -29,7 +31,13 @@ async def get_authors(user_id: CurrentUserUUID, session: session_dependency):
     log.debug("authors.list_requested", user_id=str(user_id))
     return await author_service.list_available(user_id=user_id, session=session)
 
-@authors_routes.get("/generative_enabled")
+@authors_routes.get(
+    "/generative_enabled",
+    deprecated=True,
+    description="This functionality was supposed to paraphrase given"
+                " text in specific author style with LLM, but training"
+                " and hosting LLM was not implemented at this point."
+)
 async def get_generative_enabled_authors(
     user_id: CurrentUserUUID, session: session_dependency
 ):
@@ -45,6 +53,26 @@ async def create_author(
 
     log.debug("authors.create_requested", user_id=str(user_id))
     return await author_service.create(form, user_id, session)
+
+@authors_routes.delete("/{author_id}")
+async def delete_author(
+        author_id: str,
+        user_id: CurrentUserUUID,
+        session: session_dependency
+):
+    log.debug("authors.delete_requested", user_id=str(user_id))
+    await author_service.delete_author(author_id, user_id, session)
+    return Response(status_code=204)
+
+@authors_routes.patch("/{author_id}")
+async def edit_author(
+        author_id: str,
+        form: EditAuthorForm,
+        user_id: CurrentUserUUID,
+        session: session_dependency
+) -> AuthorEditResponse:
+    log.debug("authors.edit_requested", user_id=str(user_id))
+    return await author_service.edit_author(author_id, form, user_id, session)
 
 @authors_routes.post("/compute_metrics")
 async def start_compute_metrics_task_endpoint(

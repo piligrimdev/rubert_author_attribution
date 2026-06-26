@@ -11,6 +11,7 @@ import {
   YAxis,
 } from "recharts";
 import { useTheme } from "@mui/material/styles";
+import { strings } from "@/i18n/strings";
 import type { MetricQuartiles } from "@/types/authorMetrics";
 
 type Props = {
@@ -50,14 +51,14 @@ export default function MetricMeanMedianCompareBars({
   const keyB = "b";
 
   const data = [
-    { name: "Среднее", [keyA]: statsA.mean, [keyB]: statsB.mean },
-    { name: "Медиана", [keyA]: statsA.median, [keyB]: statsB.median },
+    { name: strings.metrics.panel.barMean, [keyA]: statsA.mean, [keyB]: statsB.mean },
+    { name: strings.metrics.panel.barMedian, [keyA]: statsA.median, [keyB]: statsB.median },
   ];
 
   return (
     <Box sx={{ width: "100%", height: 132 }}>
       <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
-        Столбчатая диаграмма: сравнение среднего и медианы (общая шкала)
+        {strings.metrics.panel.barChartCompare}
       </Typography>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart

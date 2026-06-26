@@ -10,9 +10,11 @@ from .user_service import UserService
 from ..core.workers import celery
 from ..schemas.responses import (
     CorpusCsvImportResult,
+    CorpusCsvImportResultError,
     CorpusImportTaskStatus,
     StartCorpusImportTaskResponse,
 )
+from ..crud.abstract_crud_db_provider import AlreadyExistsInDB, NotFoundInDB
 from .author_service import AuthorService
 from .corpus_csv_parse_service import CorpusCsvParseError, CorpusCsvParseService
 from .genre_service import GenreService
@@ -24,8 +26,14 @@ from .corpus_upload_storage import CorpusUploadStorage
 logger = structlog.get_logger(__name__)
 
 def parse_author_name(full_name: str) -> tuple[str, str, str]:
-    return full_name, "", ""
+    return full_name, "", "" 
 
+
+class CantUseThatAuthorError(Exception):
+    pass
+
+class CantUseThatGenreError(Exception):
+    pass
 
 class CorpusImportService:
     def __init__(
@@ -61,7 +69,7 @@ class CorpusImportService:
         total = len(df)
         added = 0
         skipped_empty = 0
-        errors = 0
+        errors = []
 
         author_cache: dict[str, object] = {}
         genre_cache: dict[str, object] = {}
@@ -90,7 +98,10 @@ class CorpusImportService:
                         )
                         logger.info("csv_parsing.parsing.admin_created_genre_from_csv", row_idx=processed)
                     else:
-                        genre = await self.genre_service.get_by_name_entity(genre_col, session=session)
+                        try:
+                            genre = await self.genre_service.get_by_name_entity(genre_col, session=session)
+                        except NotFoundInDB:
+                            raise CantUseThatGenreError(f"Genre {genre_col} not found.")
                         logger.info("csv_parsing.parsing.user_got_genre_from_db", row_idx=processed)
                     genre_cache[genre_col] = genre
 
@@ -98,8 +109,10 @@ class CorpusImportService:
                 if author is None:
                     name, surname, last_name = parse_author_name(author_str)
                     author = await self.author_service.get_or_create_entity(
-                        name, surname, last_name, user_id, session
-                    )
+                            name, surname, last_name, user_id, session
+                        )
+                    if author.provided_by_user != user_id:
+                        raise CantUseThatAuthorError(f"Author {author_str} already created by another user.")
                     author_cache[author_str] = author
 
                 await self.text_service.add_text_entity(
@@ -111,9 +124,25 @@ class CorpusImportService:
                 )
                 logger.info("csv_parsing.parsing.text_from_csv_added", row_idx=processed)
                 added += 1
+            except CantUseThatAuthorError as e:
+                logger.error("csv_parsing.parsing.error_on_processing_row", error=e)
+                errors += [
+                    CorpusCsvImportResultError(
+                        ind=processed,
+                        error=str(e)
+                    )
+                ]
+            except CantUseThatGenreError as e:
+                logger.error("csv_parsing.parsing.error_on_processing_row", error=e)
+                errors += [
+                    CorpusCsvImportResultError(
+                        ind=processed,
+                        error=str(e)
+                    )
+                ]
             except Exception as e:
                 logger.error("csv_parsing.parsing.error_on_processing_row", error=e)
-                errors += 1
+                errors += [{"error": ""}]
             finally:
                 if progress_cb is not None:
                     progress_cb(processed, total)

@@ -8,15 +8,10 @@ from alembic import context
 from sqlalchemy_utils import database_exists, create_database
 
 from app.core.database import Base
-#from app.entities.genre import Genre
-
+import app.entities  # noqa: F401 — регистрирует все модели в Base.metadata
 
 config = context.config
 
-
-# add your model's MetaData object here
-# for 'autogenerate' support
-# from myapp import mymodel
 target_metadata = Base.metadata
 
 # для указания урла бд из пременных окружения при мигарциях

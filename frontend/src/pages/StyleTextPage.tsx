@@ -7,6 +7,7 @@ import PredictionError from "@/components/Prediction/PredictionError";
 import { useGenerativeAuthors } from "@/hooks/useGenerativeAuthors";
 import { useStyleText } from "@/hooks/useStyleText";
 import type { StyleTextRequest } from "@/types/styleText";
+import { strings } from "@/i18n/strings";
 
 export default function StyleTextPage() {
   const { data: authors = [], isLoading: authorsLoading, error: authorsError } =
@@ -19,14 +20,12 @@ export default function StyleTextPage() {
 
   return (
     <Stack spacing={2}>
-      <PageTitle subtitle="Перефразирование вашего текста в стилистике выбранного писателя">
-        Стилизация текста
+      <PageTitle subtitle={strings.styleText.subtitle}>
+        {strings.styleText.title}
       </PageTitle>
 
       {authorsError && (
-        <Alert severity="error">
-          Не удалось загрузить список авторов. Попробуйте обновить страницу.
-        </Alert>
+        <Alert severity="error">{strings.styleText.authorsLoadError}</Alert>
       )}
 
       <StyleTextForm

@@ -5,6 +5,7 @@ import Fade from "@mui/material/Fade";
 import Stack from "@mui/material/Stack";
 import type { NearestTextsResponse } from "@/types/prediction";
 import PredictionResultItem from "./PredictionResultItem";
+import { strings } from "@/i18n/strings";
 
 interface PredictionResultsProps {
   data: NearestTextsResponse;
@@ -17,7 +18,7 @@ export default function PredictionResults({ data }: PredictionResultsProps) {
     return (
       <Paper sx={{ p: 3 }}>
         <Typography color="text.secondary">
-          Похожих текстов не найдено.
+          {strings.attribution.noSimilarTexts}
         </Typography>
       </Paper>
     );
@@ -27,7 +28,7 @@ export default function PredictionResults({ data }: PredictionResultsProps) {
     <Fade in>
       <Paper sx={{ p: 3 }}>
         <Typography variant="h6" gutterBottom>
-          Ближайшие тексты
+          {strings.attribution.nearestTexts}
         </Typography>
         <Divider sx={{ mb: 1 }} />
         <Stack divider={<Divider />}>

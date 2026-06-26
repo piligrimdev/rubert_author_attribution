@@ -6,24 +6,16 @@ export const apiClient = axios.create({
   withCredentials: true,
 });
 
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem("access_token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
 let isRefreshing = false;
 let pendingQueue: Array<{
-  resolve: (token: string) => void;
+  resolve: () => void;
   reject: (err: unknown) => void;
 }> = [];
 
-function processQueue(error: unknown, token: string | null) {
+function processQueue(error: unknown) {
   pendingQueue.forEach((p) => {
     if (error) p.reject(error);
-    else p.resolve(token!);
+    else p.resolve();
   });
   pendingQueue = [];
 }
@@ -41,10 +33,7 @@ apiClient.interceptors.response.use(
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           pendingQueue.push({
-            resolve: (token: string) => {
-              original.headers.Authorization = `Bearer ${token}`;
-              resolve(apiClient(original));
-            },
+            resolve: () => resolve(apiClient(original)),
             reject,
           });
         });
@@ -54,15 +43,11 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const { data } = await apiClient.post("/auth/refresh");
-        const newToken = data.access_token;
-        localStorage.setItem("access_token", newToken);
-        original.headers.Authorization = `Bearer ${newToken}`;
-        processQueue(null, newToken);
+        await apiClient.post("/auth/refresh");
+        processQueue(null);
         return apiClient(original);
       } catch (refreshError) {
-        processQueue(refreshError, null);
-        localStorage.removeItem("access_token");
+        processQueue(refreshError);
         window.location.href = "/login";
         return Promise.reject(refreshError);
       } finally {

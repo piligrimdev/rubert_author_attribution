@@ -10,7 +10,11 @@ import jwt
 JWT_ALGORITHM = "RS256"
 ACCESS_TOKEN_EXPIRATION_MINUTES = 30
 REFRESH_TOKEN_EXPIRATION_DAYS = 30
+ACCESS_COOKIE_NAME = "access_token"
 REFRESH_COOKIE_NAME = "refresh_token"
+AUTH_COOKIE_PATH = os.getenv("AUTH_COOKIE_PATH", "/")
+AUTH_COOKIE_SECURE = os.getenv("AUTH_COOKIE_SECURE", "0") == "1"
+AUTH_COOKIE_SAMESITE = os.getenv("AUTH_COOKIE_SAMESITE", "strict")
 
 _PRIVATE_KEY_PATH = os.getenv("JWT_PRIVATE_KEY_PATH", "keys/jwt_private.pem")
 _PUBLIC_KEY_PATH = os.getenv("JWT_PUBLIC_KEY_PATH", "keys/jwt_private.pem.pub")
