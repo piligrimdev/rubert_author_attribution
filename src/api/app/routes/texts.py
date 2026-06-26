@@ -1,7 +1,7 @@
 import uuid
 from typing import List
 import structlog
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from starlette.responses import Response
 
 from ..core.dependencies import CurrentUserUUID, session_dependency
@@ -37,7 +37,10 @@ async def add_text(
     session: session_dependency,
 ):
     log.debug("texts.add_text_requested", user_id=str(user_id))
-    return await text_service.add_text(form, user_id, session)
+    try:
+        return await text_service.add_text(form, user_id, session)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @texts_routes.patch("/{text_id}", response_model=TextEditResponse)
 async def edit_text(

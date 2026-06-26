@@ -112,6 +112,10 @@ class TextService:
         logger.debug("texts.embedding.generated")
         return embedding
 
+    async def _ensure_text_not_exists(self, text: str, session) -> None:
+        if await self.crud.exists_by_text(text, session=session):
+            raise ValueError("Text already exists in database")
+
     async def add_text_entity(
             self,
             text: str,
@@ -123,6 +127,7 @@ class TextService:
         # без проверки на доступность автора юзеру для загрузки из csv
 
         user = await self.user_service.get_user_by_id(user_id, session=session)
+        await self._ensure_text_not_exists(text, session)
         embedding = self._embed(text)
 
         result =  await self.crud.create(
@@ -162,6 +167,7 @@ class TextService:
 
         user = await self.user_service.get_user_by_id(user_id, session=session)
 
+        await self._ensure_text_not_exists(form.text, session)
         embedding = self._embed(form.text)
 
         text_obj = await self.crud.create(
@@ -269,6 +275,8 @@ class TextService:
         updates = form.model_dump(exclude_unset=True)
         if not updates:
             raise HTTPException(HTTP_400_BAD_REQUEST, "No fields to update")
+
+        self._ensure_text_not_exists(form.text, session)
 
         user = await self.user_service.get_user_by_id(user_id, session=session)
 

@@ -14,6 +14,10 @@ from ...entities.user import User
 class TextCRUDDatabaseProvider(AbstractCRUDDatabaseProvider):
     model = Text
 
+    async def exists_by_text(self, text: str, session: Session = None) -> bool:
+        stmt = select(Text.id).where(Text.text == text).limit(1)
+        return session.scalar(stmt) is not None
+
     async def get_by_author(
             self,
             author_id: uuid.UUID,
