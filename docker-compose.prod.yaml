@@ -142,7 +142,8 @@ services:
       SERVICE_NAME: api
     expose:
       - 8080
-    command: ["python", "run.py"]
+    command: >
+      sh -c "python generate_jwt_keys.py --out-dir=keys && python run.py"
     depends_on:
       db:
         condition: service_healthy
