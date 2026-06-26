@@ -14,6 +14,7 @@ import {
 } from "@/hooks/usePrediction";
 import { useAuthors } from "@/hooks/useAuthors";
 import type { AttributionSubmitPayload } from "@/types/prediction";
+import { strings } from "@/i18n/strings";
 
 export default function HomePage() {
   const [selectedAuthorIds, setSelectedAuthorIds] = useState<string[]>([]);
@@ -40,14 +41,12 @@ export default function HomePage() {
 
   return (
     <Stack spacing={2}>
-      <PageTitle subtitle="Определение автора текста на основе стилистического анализа">
-        Атрибуция авторства
+      <PageTitle subtitle={strings.home.subtitle}>
+        {strings.home.title}
       </PageTitle>
 
       {authorsError && (
-        <Alert severity="error">
-          Не удалось загрузить список авторов. Попробуйте обновить страницу.
-        </Alert>
+        <Alert severity="error">{strings.home.authorsLoadError}</Alert>
       )}
 
       <Box

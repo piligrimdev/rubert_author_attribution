@@ -5,6 +5,7 @@ import DialogContentText from "@mui/material/DialogContentText";
 import DialogActions from "@mui/material/DialogActions";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
+import { strings } from "@/i18n/strings";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -21,8 +22,8 @@ export default function ConfirmDialog({
   open,
   title,
   message,
-  confirmLabel = "Удалить",
-  cancelLabel = "Отмена",
+  confirmLabel = strings.common.delete,
+  cancelLabel = strings.common.cancel,
   isLoading = false,
   onConfirm,
   onCancel,

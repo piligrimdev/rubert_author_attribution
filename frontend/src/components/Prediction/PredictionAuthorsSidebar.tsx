@@ -9,21 +9,29 @@ import ListItemButton from "@mui/material/ListItemButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 import Checkbox from "@mui/material/Checkbox";
-import FormHelperText from "@mui/material/FormHelperText";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
 import CircularProgress from "@mui/material/CircularProgress";
 import SearchIcon from "@mui/icons-material/Search";
+import Chip from "@mui/material/Chip";
+import FormControl from "@mui/material/FormControl";
+import InputLabel from "@mui/material/InputLabel";
+import Select from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
 import type { Author } from "@/types/author";
 import { formatAuthorLabel } from "@/components/StyleText/authorLabel";
 import {
   authorMatchesGenre,
+  authorMatchesProvidedBy,
   authorMatchesQuery,
   buildAuthorGenresMap,
+  type ProvidedByFilter,
 } from "@/utils/authorFilter";
 import { useTexts } from "@/hooks/useTexts";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import GenreFilterAutocomplete from "@/components/common/GenreFilterAutocomplete";
+import { format, strings } from "@/i18n/strings";
 
 interface PredictionAuthorsSidebarProps {
   authors: Author[];
@@ -40,6 +48,9 @@ export default function PredictionAuthorsSidebar({
 }: PredictionAuthorsSidebarProps) {
   const [search, setSearch] = useState("");
   const [genre, setGenre] = useState("");
+  const [providedBy, setProvidedBy] = useState<ProvidedByFilter>("all");
+  const { data: currentUser } = useCurrentUser();
+  const currentUserId = currentUser?.user_id ?? null;
   const { data: texts = [] } = useTexts();
 
   const genresMap = useMemo(() => buildAuthorGenresMap(texts), [texts]);
@@ -49,9 +60,10 @@ export default function PredictionAuthorsSidebar({
       authors.filter(
         (author) =>
           authorMatchesQuery(author, search) &&
-          authorMatchesGenre(author.id, genre, genresMap),
+          authorMatchesGenre(author.id, genre, genresMap) &&
+          authorMatchesProvidedBy(author, providedBy, currentUserId),
       ),
-    [authors, search, genre, genresMap],
+    [authors, search, genre, genresMap, providedBy, currentUserId],
   );
 
   const toggleId = (id: string) => {
@@ -84,14 +96,13 @@ export default function PredictionAuthorsSidebar({
       >
         <CircularProgress size={22} />
         <Typography variant="body2" color="text.secondary">
-          Загрузка авторов…
+          {strings.common.loadingAuthors}
         </Typography>
       </Paper>
     );
   }
 
-  const selectedInFiltered = filtered.filter((a) => selectedIds.includes(a.id)).length;
-  const hasActiveFilters = search.trim() !== "" || genre !== "";
+  const hasSelection = selectedIds.length > 0;
 
   return (
     <Paper
@@ -109,13 +120,50 @@ export default function PredictionAuthorsSidebar({
     >
       <Box sx={{ p: 2, pb: 1 }}>
         <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-          Авторы для сравнения
+          {strings.attribution.sidebarTitle}
         </Typography>
+
+        <Box
+          sx={{
+            mb: 1.5,
+            p: 1.5,
+            borderRadius: 1,
+            border: 1,
+            borderColor: "divider",
+            bgcolor: "action.hover",
+          }}
+        >
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
+            <Chip
+              label={format(strings.attribution.sidebarSelectionCount, {
+                selected: selectedIds.length,
+              })}
+              size="small"
+              color={hasSelection ? "primary" : "default"}
+              sx={{ fontWeight: 700 }}
+            />
+            <Chip
+              label={format(strings.attribution.sidebarFilteredCount, {
+                filtered: filtered.length,
+                total: authors.length,
+              })}
+              size="small"
+              variant="outlined"
+              sx={{ fontWeight: 600 }}
+            />
+          </Stack>
+          <Typography variant="body2" fontWeight={600} color="text.primary" sx={{ lineHeight: 1.45 }}>
+            {hasSelection
+              ? strings.attribution.sidebarWithSelectionHint
+              : strings.attribution.sidebarNoSelectionHint}
+          </Typography>
+        </Box>
+
         <Stack spacing={1}>
           <TextField
             size="small"
             fullWidth
-            placeholder="Поиск по имени или фамилии…"
+            placeholder={strings.common.searchByNamePlaceholder}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             slotProps={{
@@ -133,27 +181,34 @@ export default function PredictionAuthorsSidebar({
             onChange={setGenre}
             fullWidth
           />
+          <FormControl size="small" fullWidth>
+            <InputLabel id="predict-authors-provided-by-label">
+              {strings.authors.providedBy}
+            </InputLabel>
+            <Select
+              labelId="predict-authors-provided-by-label"
+              label={strings.authors.providedBy}
+              value={providedBy}
+              onChange={(e) => setProvidedBy(e.target.value as ProvidedByFilter)}
+            >
+              <MenuItem value="all">{strings.authors.providedByAll}</MenuItem>
+              <MenuItem value="admin">{strings.authors.providedByAdmin}</MenuItem>
+              <MenuItem value="mine">{strings.authors.providedByMine}</MenuItem>
+            </Select>
+          </FormControl>
         </Stack>
         <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap" useFlexGap>
           <Button size="small" onClick={handleClearSelection} disabled={selectedIds.length === 0}>
-            Снять выбор
+            {strings.attribution.clearSelection}
           </Button>
           <Button
             size="small"
             onClick={handleSelectFiltered}
             disabled={filtered.length === 0}
           >
-            Выбрать всех в списке
+            {strings.attribution.selectAllInList}
           </Button>
         </Stack>
-        <FormHelperText sx={{ mx: 0, mt: 1 }}>
-          Не выбран ни один автор — поиск по всем доступным. Иначе только среди
-          отмеченных ({selectedIds.length}
-          {hasActiveFilters || filtered.length !== authors.length
-            ? ` · в списке ${filtered.length} из ${authors.length}`
-            : ""}
-          ).
-        </FormHelperText>
       </Box>
 
       <List
@@ -169,8 +224,8 @@ export default function PredictionAuthorsSidebar({
         {filtered.length === 0 ? (
           <ListItem>
             <ListItemText
-              primary="Никого не найдено"
-              secondary="Измените запрос поиска или фильтр жанра"
+              primary={strings.attribution.noAuthorsFound}
+              secondary={strings.attribution.changeFilters}
               secondaryTypographyProps={{ color: "text.secondary" }}
             />
           </ListItem>
@@ -209,14 +264,6 @@ export default function PredictionAuthorsSidebar({
           })
         )}
       </List>
-
-      {filtered.length > 0 && selectedInFiltered > 0 && (
-        <Box sx={{ px: 2, py: 1, borderTop: 1, borderColor: "divider" }}>
-          <Typography variant="caption" color="text.secondary">
-            Отмечено в этом списке: {selectedInFiltered} из {filtered.length}
-          </Typography>
-        </Box>
-      )}
     </Paper>
   );
 }

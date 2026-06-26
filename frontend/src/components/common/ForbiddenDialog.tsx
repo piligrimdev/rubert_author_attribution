@@ -4,6 +4,7 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
 import DialogActions from "@mui/material/DialogActions";
 import Button from "@mui/material/Button";
+import { strings } from "@/i18n/strings";
 
 interface ForbiddenDialogProps {
   open: boolean;
@@ -18,13 +19,13 @@ export default function ForbiddenDialog({
 }: ForbiddenDialogProps) {
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
-      <DialogTitle>Недостаточно прав</DialogTitle>
+      <DialogTitle>{strings.dialogs.forbiddenTitle}</DialogTitle>
       <DialogContent>
         <DialogContentText>{message}</DialogContentText>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
         <Button onClick={onClose} variant="contained">
-          Понятно
+          {strings.dialogs.forbiddenOk}
         </Button>
       </DialogActions>
     </Dialog>

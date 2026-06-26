@@ -10,6 +10,7 @@ import {
   buildAuthorEditPatch,
   type AuthorEditFormValues,
 } from "@/utils/authorEditPatch";
+import { strings } from "@/i18n/strings";
 
 interface EditAuthorFormProps {
   author: Author;
@@ -51,23 +52,23 @@ export default function EditAuthorForm({
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
           <TextField
             {...register("surname")}
-            label="Фамилия"
+            label={strings.common.surname}
             fullWidth
           />
           <TextField
             {...register("name")}
-            label="Имя"
+            label={strings.common.name}
             fullWidth
           />
           <TextField
             {...register("last_name")}
-            label="Отчество"
+            label={strings.common.lastName}
             fullWidth
           />
         </Stack>
         <TextField
           {...register("description")}
-          label="Описание"
+          label={strings.common.description}
           fullWidth
           multiline
           minRows={3}
@@ -79,7 +80,7 @@ export default function EditAuthorForm({
             startIcon={<SaveIcon />}
             disabled={isLoading}
           >
-            Сохранить
+            {strings.common.save}
           </Button>
           <Button
             type="button"
@@ -88,7 +89,7 @@ export default function EditAuthorForm({
             onClick={onCancel}
             disabled={isLoading}
           >
-            Отмена
+            {strings.common.cancel}
           </Button>
         </Stack>
       </Stack>

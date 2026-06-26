@@ -27,6 +27,7 @@ import ConfirmDialog from "@/components/common/ConfirmDialog";
 import ForbiddenDialog from "@/components/common/ForbiddenDialog";
 import { canDeleteAuthor, canEditAuthor } from "@/utils/permissions";
 import { getApiErrorDetail, isForbiddenError } from "@/utils/apiError";
+import { format, strings } from "@/i18n/strings";
 import type { Author, EditAuthorRequest } from "@/types/author";
 import type { TextItem } from "@/types/text";
 
@@ -61,11 +62,10 @@ export default function AuthorDetailPage() {
     deleteFn: async (target: Author) => {
       await deleteAuthorMutation.mutateAsync(target.id);
     },
-    confirmTitle: "Удалить автора?",
+    confirmTitle: strings.dialogs.deleteAuthorTitle,
     getConfirmMessage: (target) =>
-      `Вы уверены, что хотите удалить автора «${formatFullName(target)}»? Все связанные тексты также будут удалены.`,
-    forbiddenFallback:
-      "Удалить этого автора может только администратор или пользователь, который его добавил.",
+      format(strings.dialogs.deleteAuthorMessage, { name: formatFullName(target) }),
+    forbiddenFallback: strings.dialogs.deleteAuthorForbidden,
     onSuccess: () => navigate("/authors"),
   });
 
@@ -76,11 +76,9 @@ export default function AuthorDetailPage() {
         authorId: target.author_id,
       });
     },
-    confirmTitle: "Удалить текст?",
-    getConfirmMessage: () =>
-      "Вы уверены, что хотите удалить этот текст? Это действие нельзя отменить.",
-    forbiddenFallback:
-      "Удалить этот текст может только администратор или пользователь, который его добавил.",
+    confirmTitle: strings.dialogs.deleteTextTitle,
+    getConfirmMessage: () => strings.dialogs.deleteTextMessage,
+    forbiddenFallback: strings.dialogs.deleteTextForbidden,
   });
 
   if (authorsLoading) {
@@ -94,9 +92,9 @@ export default function AuthorDetailPage() {
   if (!author) {
     return (
       <Alert severity="warning">
-        Автор не найден.{" "}
+        {strings.authorDetail.notFound}{" "}
         <Typography component={Link} to="/authors" color="primary">
-          Вернуться к списку
+          {strings.authorDetail.backToList}
         </Typography>
       </Alert>
     );
@@ -112,7 +110,7 @@ export default function AuthorDetailPage() {
 
   const handleEditAuthor = async (data: EditAuthorRequest) => {
     if (Object.keys(data).length === 0) {
-      setEditAuthorError("Нет изменений для сохранения");
+      setEditAuthorError(strings.authorDetail.noChanges);
       return;
     }
 
@@ -129,11 +127,11 @@ export default function AuthorDetailPage() {
         setEditAuthorForbidden(
           getApiErrorDetail(
             err,
-            "Редактировать этого автора может только администратор или пользователь, который его добавил.",
+            strings.authorDetail.editForbidden,
           ),
         );
       } else {
-        setEditAuthorError(getApiErrorDetail(err, "Не удалось сохранить изменения"));
+        setEditAuthorError(getApiErrorDetail(err, strings.authorDetail.saveFailed));
       }
     }
   };
@@ -146,7 +144,7 @@ export default function AuthorDetailPage() {
         startIcon={<ArrowBackIcon />}
         sx={{ alignSelf: "flex-start", color: "text.secondary" }}
       >
-        К списку авторов
+        {strings.common.backToAuthors}
       </Button>
 
       <Paper sx={{ p: 3 }}>
@@ -177,7 +175,7 @@ export default function AuthorDetailPage() {
                     setEditAuthorError(null);
                   }}
                 >
-                  Редактировать
+                  {strings.common.edit}
                 </Button>
               )}
               {canDeleteThisAuthor && !isEditingAuthor && (
@@ -187,7 +185,7 @@ export default function AuthorDetailPage() {
                   startIcon={<DeleteOutlineIcon />}
                   onClick={() => deleteAuthorDialog.requestDelete(author)}
                 >
-                  Удалить автора
+                  {strings.authorDetail.deleteAuthor}
                 </Button>
               )}
             </Stack>
@@ -209,7 +207,7 @@ export default function AuthorDetailPage() {
                 {author.provided_by === null && (
                   <Chip
                     icon={<AdminPanelSettingsIcon />}
-                    label="Добавлен администратором"
+                    label={strings.common.addedByAdmin}
                     size="small"
                     variant="outlined"
                   />
@@ -243,7 +241,7 @@ export default function AuthorDetailPage() {
       <Paper sx={{ p: 3 }}>
         <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
           <BarChartIcon color="primary" />
-          <Typography variant="h6">Статистика автора</Typography>
+          <Typography variant="h6">{strings.authorDetail.statsTitle}</Typography>
         </Stack>
         <Divider sx={{ mb: 2 }} />
         <Box
@@ -258,7 +256,7 @@ export default function AuthorDetailPage() {
               {texts?.length ?? "—"}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Количество текстов в базе
+              {strings.authorDetail.textCountLabel}
             </Typography>
           </Paper>
         </Box>
@@ -273,7 +271,7 @@ export default function AuthorDetailPage() {
       <Paper sx={{ p: 3 }}>
         <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
           <ArticleIcon color="primary" />
-          <Typography variant="h6">Тексты автора</Typography>
+          <Typography variant="h6">{strings.authorDetail.textsTitle}</Typography>
         </Stack>
         <Divider sx={{ mb: 2 }} />
 
@@ -285,13 +283,13 @@ export default function AuthorDetailPage() {
 
         {textsError && (
           <Alert severity="error" sx={{ mb: 2 }}>
-            Не удалось загрузить тексты: {textsError.message}
+            {format(strings.authorDetail.textsLoadError, { message: textsError.message })}
           </Alert>
         )}
 
         {texts && !texts.length && (
           <Typography color="text.secondary" sx={{ py: 2, textAlign: "center" }}>
-            У автора пока нет текстов.
+            {strings.authorDetail.noTexts}
           </Typography>
         )}
 
@@ -317,11 +315,11 @@ export default function AuthorDetailPage() {
 
       {addTextMutation.error && (
         <Alert severity="error">
-          Не удалось добавить текст: {addTextMutation.error.message}
+          {format(strings.authorDetail.addTextError, { message: addTextMutation.error.message })}
         </Alert>
       )}
       {addTextMutation.isSuccess && (
-        <Alert severity="success">Текст успешно добавлен!</Alert>
+        <Alert severity="success">{strings.authorDetail.addTextSuccess}</Alert>
       )}
       <AddTextForm onSubmit={handleAddText} isLoading={addTextMutation.isPending} />
 

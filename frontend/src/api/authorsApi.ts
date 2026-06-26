@@ -1,5 +1,6 @@
 import axios from "axios";
 
+import { strings } from "@/i18n/strings";
 import { apiClient } from "./client";
 import type { Author, CreateAuthorRequest, EditAuthorRequest, EditAuthorResponse } from "@/types/author";
 import type {
@@ -80,9 +81,7 @@ export async function computeAuthorMetrics(
     }
   }
 
-  throw new Error(
-    "Превышено время ожидания расчёта метрик. Попробуйте позже.",
-  );
+  throw new Error(strings.apiErrors.metricsTimeout);
 }
 
 export async function startCorpusCsvImport(
@@ -128,13 +127,11 @@ export async function importCorpusCsv(
     }
 
     if (status.status === "FAILURE") {
-      throw new Error(status.error ?? "Импорт завершился с ошибкой");
+      throw new Error(status.error ?? strings.apiErrors.importFailed);
     }
 
     await delay(CORPUS_IMPORT_POLL_INTERVAL_MS);
   }
 
-  throw new Error(
-    "Превышено время ожидания импорта. Задача может ещё выполняться на сервере.",
-  );
+  throw new Error(strings.apiErrors.importTimeout);
 }

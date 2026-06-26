@@ -13,6 +13,7 @@ import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import type { Author } from "@/types/author";
 import type { StyleTextRequest } from "@/types/styleText";
 import { formatAuthorLabel } from "./authorLabel";
+import { strings } from "@/i18n/strings";
 
 interface StyleTextFormProps {
   authors: Author[];
@@ -45,22 +46,24 @@ export default function StyleTextForm({
           {isAuthorsLoading ? (
             <Stack direction="row" alignItems="center" spacing={1} sx={{ py: 1 }}>
               <CircularProgress size={22} />
-              <FormHelperText>Загрузка списка авторов…</FormHelperText>
+              <FormHelperText>{strings.styleText.loadingAuthors}</FormHelperText>
             </Stack>
           ) : (
             <Controller
               name="author_id"
               control={control}
               rules={{
-                required: "Выберите автора",
+                required: strings.styleText.authorRequired,
               }}
               render={({ field }) => (
                 <FormControl fullWidth error={!!errors.author_id} disabled={noAuthors}>
-                  <InputLabel id="style-author-label">Автор стиля</InputLabel>
+                  <InputLabel id="style-author-label">
+                    {strings.styleText.authorLabel}
+                  </InputLabel>
                   <Select
                     {...field}
                     labelId="style-author-label"
-                    label="Автор стиля"
+                    label={strings.styleText.authorLabel}
                   >
                     {authors.map((a) => (
                       <MenuItem key={a.id} value={a.id}>
@@ -72,10 +75,7 @@ export default function StyleTextForm({
                     <FormHelperText>{errors.author_id.message}</FormHelperText>
                   )}
                   {noAuthors && (
-                    <FormHelperText>
-                      Нет авторов с доступной генерацией стиля. Добавьте авторов в
-                      разделе «Авторы».
-                    </FormHelperText>
+                    <FormHelperText>{strings.styleText.noGenerativeAuthors}</FormHelperText>
                   )}
                 </FormControl>
               )}
@@ -84,14 +84,14 @@ export default function StyleTextForm({
 
           <TextField
             {...register("text", {
-              required: "Введите текст",
+              required: strings.styleText.textRequired,
               minLength: {
                 value: 10,
-                message: "Минимум 10 символов",
+                message: strings.styleText.textMinLength,
               },
             })}
-            label="Ваш текст"
-            placeholder="Введите текст, который нужно переписать в выбранном стиле…"
+            label={strings.styleText.textLabel}
+            placeholder={strings.styleText.textPlaceholder}
             multiline
             minRows={6}
             maxRows={16}
@@ -109,7 +109,7 @@ export default function StyleTextForm({
             endIcon={<AutoFixHighIcon />}
             sx={{ alignSelf: "flex-start" }}
           >
-            Сгенерировать
+            {strings.styleText.submit}
           </Button>
         </Stack>
       </form>

@@ -3,6 +3,7 @@ import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
 import type { SxProps, Theme } from "@mui/material/styles";
 import { useGenres } from "@/hooks/useGenres";
+import { strings } from "@/i18n/strings";
 
 const ALL_GENRES_OPTION = "";
 
@@ -18,7 +19,7 @@ interface GenreFilterAutocompleteProps {
 export default function GenreFilterAutocomplete({
   value,
   onChange,
-  label = "Жанр",
+  label = strings.common.genre,
   size = "small",
   fullWidth = false,
   sx,
@@ -31,7 +32,7 @@ export default function GenreFilterAutocomplete({
   }, [genres]);
 
   const getOptionLabel = (option: string) =>
-    option === ALL_GENRES_OPTION ? "Все жанры" : option;
+    option === ALL_GENRES_OPTION ? strings.common.genreAll : option;
 
   return (
     <Autocomplete
@@ -45,9 +46,15 @@ export default function GenreFilterAutocomplete({
       disableClearable
       getOptionLabel={getOptionLabel}
       isOptionEqualToValue={(option, selected) => option === selected}
-      noOptionsText={isLoading ? "Загрузка…" : "Жанры не найдены"}
+      noOptionsText={
+        isLoading ? strings.common.genreLoading : strings.common.genreNotFound
+      }
       renderInput={(params) => (
-        <TextField {...params} label={label} placeholder="Поиск жанра…" />
+        <TextField
+          {...params}
+          label={label}
+          placeholder={strings.common.genreSearchPlaceholder}
+        />
       )}
     />
   );

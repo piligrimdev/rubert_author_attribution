@@ -3,6 +3,7 @@ import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
 import type { SxProps, Theme } from "@mui/material/styles";
 import { useGenres } from "@/hooks/useGenres";
+import { strings } from "@/i18n/strings";
 
 interface GenreAutocompleteProps {
   value: string;
@@ -21,8 +22,8 @@ interface GenreAutocompleteProps {
 export default function GenreAutocomplete({
   value,
   onChange,
-  label = "Жанр",
-  placeholder = "Начните вводить название…",
+  label = strings.common.genre,
+  placeholder = strings.common.genreInputPlaceholder,
   size = "medium",
   fullWidth = true,
   required = false,
@@ -48,7 +49,9 @@ export default function GenreAutocomplete({
       fullWidth={fullWidth}
       size={size}
       sx={sx}
-      noOptionsText={isLoading ? "Загрузка…" : "Жанры не найдены"}
+      noOptionsText={
+        isLoading ? strings.common.genreLoading : strings.common.genreNotFound
+      }
       renderInput={(params) => (
         <TextField
           {...params}

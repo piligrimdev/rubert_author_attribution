@@ -9,6 +9,8 @@ import AddAuthorPage from "@/pages/AddAuthorPage";
 import ImportCorpusPage from "@/pages/ImportCorpusPage";
 import LoginPage from "@/pages/LoginPage";
 import RegisterPage from "@/pages/RegisterPage";
+import GenresPage from "@/pages/GenresPage";
+import AboutPage from "@/pages/AboutPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 
 export const router = createBrowserRouter([
@@ -17,12 +19,14 @@ export const router = createBrowserRouter([
     children: [
       { path: "login", element: <LoginPage /> },
       { path: "register", element: <RegisterPage /> },
+      { path: "about", element: <AboutPage /> },
       {
         element: <ProtectedRoute />,
         children: [
           { index: true, element: <HomePage /> },
           { path: "style", element: <StyleTextPage /> },
           { path: "authors", element: <AuthorsPage /> },
+          { path: "genres", element: <GenresPage /> },
           { path: "authors/new", element: <AddAuthorPage /> },
           { path: "authors/import", element: <ImportCorpusPage /> },
           { path: "authors/:id", element: <AuthorDetailPage /> },

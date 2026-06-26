@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { getApiErrorDetail, isForbiddenError } from "@/utils/apiError";
+import { strings } from "@/i18n/strings";
 
 interface UseDeleteWithDialogsOptions<T> {
   deleteFn: (target: T) => Promise<void>;
@@ -46,7 +47,7 @@ export function useDeleteWithDialogs<T>({
         setTarget(null);
         setForbiddenMessage(getApiErrorDetail(err, forbiddenFallback));
       } else {
-        setErrorMessage(getApiErrorDetail(err, "Не удалось выполнить удаление"));
+        setErrorMessage(getApiErrorDetail(err, strings.dialogs.deleteFailed));
       }
     } finally {
       setIsDeleting(false);

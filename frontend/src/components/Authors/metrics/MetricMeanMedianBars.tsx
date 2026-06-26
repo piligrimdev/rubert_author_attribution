@@ -10,6 +10,7 @@ import {
   YAxis,
 } from "recharts";
 import { useTheme } from "@mui/material/styles";
+import { strings } from "@/i18n/strings";
 import type { MetricQuartiles } from "@/types/authorMetrics";
 
 type Props = {
@@ -28,14 +29,14 @@ export default function MetricMeanMedianBars({ stats, formatValue }: Props) {
   const domain: [number, number] = [lo - pad, hi + pad];
 
   const data = [
-    { name: "Среднее", value: mean },
-    { name: "Медиана", value: median },
+    { name: strings.metrics.panel.barMean, value: mean },
+    { name: strings.metrics.panel.barMedian, value: median },
   ];
 
   return (
     <Box sx={{ width: "100%", height: 112 }}>
       <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
-        Столбчатая диаграмма: среднее и медиана (та же шкала, что и у ящика)
+        {strings.metrics.panel.barChartMeanMedian}
       </Typography>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart

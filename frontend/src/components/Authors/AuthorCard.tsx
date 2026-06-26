@@ -17,6 +17,7 @@ import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useDeleteAuthor } from "@/hooks/useAuthors";
 import { useDeleteWithDialogs } from "@/hooks/useDeleteWithDialogs";
 import { canDeleteAuthor } from "@/utils/permissions";
+import { format, strings } from "@/i18n/strings";
 
 interface AuthorCardProps {
   author: Author;
@@ -35,10 +36,10 @@ export default function AuthorCard({ author }: AuthorCardProps) {
     deleteFn: async (target: Author) => {
       await deleteAuthorMutation.mutateAsync(target.id);
     },
-    confirmTitle: "Удалить автора?",
+    confirmTitle: strings.dialogs.deleteAuthorTitle,
     getConfirmMessage: (target) =>
-      `Вы уверены, что хотите удалить автора «${formatFullName(target)}»? Все связанные тексты также будут удалены.`,
-    forbiddenFallback: "Удалить этого автора может только администратор или пользователь, который его добавил.",
+      format(strings.dialogs.deleteAuthorMessage, { name: formatFullName(target) }),
+    forbiddenFallback: strings.dialogs.deleteAuthorForbidden,
   });
 
   return (
@@ -73,7 +74,7 @@ export default function AuthorCard({ author }: AuthorCardProps) {
               {author.provided_by === null && (
                 <Chip
                   icon={<AdminPanelSettingsIcon />}
-                  label="Добавлен администратором"
+                  label={strings.common.addedByAdmin}
                   size="small"
                   color="default"
                   variant="outlined"
@@ -83,11 +84,11 @@ export default function AuthorCard({ author }: AuthorCardProps) {
           </CardContent>
         </CardActionArea>
         {deletable && (
-          <Tooltip title="Удалить автора">
+          <Tooltip title={strings.dialogs.deleteAuthorTooltip}>
             <IconButton
               size="small"
               color="error"
-              aria-label="Удалить автора"
+              aria-label={strings.dialogs.deleteAuthorTooltip}
               onClick={() => deleteDialog.requestDelete(author)}
               sx={{ position: "absolute", top: 8, right: 8, bgcolor: "background.paper" }}
             >

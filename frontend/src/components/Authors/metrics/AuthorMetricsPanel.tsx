@@ -38,6 +38,7 @@ import MetricBoxPlotSvg from "./MetricBoxPlotSvg";
 import MetricMeanMedianBars from "./MetricMeanMedianBars";
 import MetricMeanMedianCompareBars from "./MetricMeanMedianCompareBars";
 import AuthorEmbeddingUmapSection from "./AuthorEmbeddingUmapSection";
+import { format, strings } from "@/i18n/strings";
 
 type Props = {
   authorId: string;
@@ -114,12 +115,10 @@ function SummaryMeanBarChart({ data }: { data: AuthorMetricsResponse }) {
   return (
     <Box sx={{ width: "100%", height: Math.max(300, chartData.length * 34 + 80) }}>
       <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
-        Сводная столбчатая диаграмма (нормализация)
+        {strings.metrics.panel.summaryChartTitle}
       </Typography>
       <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
-        Длина полосы показывает, где среднее значение лежит между минимумом и максимумом по
-        всем текстам автора (100% — у максимума, 0% — у минимума). Так можно сравнить профили
-        разных метрик на одном графике, не смешивая реальные единицы измерения.
+        {strings.metrics.panel.summaryChartHint}
       </Typography>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
@@ -153,7 +152,7 @@ function SummaryMeanBarChart({ data }: { data: AuthorMetricsResponse }) {
           />
           <Bar
             dataKey="norm"
-            name="Положение среднего"
+            name={strings.metrics.panel.meanPosition}
             fill={theme.palette.secondary.main}
             radius={[0, 4, 4, 0]}
             maxBarSize={22}
@@ -207,11 +206,10 @@ function SummaryMeanBarChartCompare({
   return (
     <Box sx={{ width: "100%", height: Math.max(320, chartData.length * 36 + 96) }}>
       <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
-        Сводная столбчатая диаграмма: сравнение двух авторов (нормализация)
+        {strings.metrics.panel.summaryCompareTitle}
       </Typography>
       <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
-        Для каждого автора отдельно: где среднее между его min и max по текстам (как выше). Рядом
-        два столбца на метрику — первый и второй автор.
+        {strings.metrics.panel.summaryCompareHint}
       </Typography>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
@@ -302,14 +300,14 @@ function MetricDeltasBlock({
       }}
     >
       <Typography variant="caption" fontWeight={700} display="block" sx={{ mb: 0.75 }}>
-        Разница ({nameB} − {nameA})
+        {format(strings.metrics.panel.deltaTitle, { nameA, nameB })}
       </Typography>
-      {line("среднее", d(statsA.mean, statsB.mean))}
-      {line("медиана", d(statsA.median, statsB.median))}
+      {line(strings.metrics.panel.mean, d(statsA.mean, statsB.mean))}
+      {line(strings.metrics.panel.median, d(statsA.median, statsB.median))}
       {line("Q1", d(statsA.q25, statsB.q25))}
       {line("Q3", d(statsA.q75, statsB.q75))}
-      {line("минимум", d(statsA.min, statsB.min))}
-      {line("максимум", d(statsA.max, statsB.max))}
+      {line(strings.metrics.panel.minimum, d(statsA.min, statsB.min))}
+      {line(strings.metrics.panel.maximum, d(statsA.max, statsB.max))}
     </Box>
   );
 }
@@ -358,23 +356,19 @@ export default function AuthorMetricsPanel({
     }
   };
 
-  const primaryName = authorLabel(data, "Первый автор");
-  const secondaryName = authorLabel(secondary, "Второй автор");
+  const primaryName = authorLabel(data, strings.metrics.panel.primaryAuthorFallback);
+  const secondaryName = authorLabel(secondary, strings.metrics.panel.secondaryAuthorFallback);
 
   return (
     <Paper sx={{ p: 3 }}>
       <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
         <InsightsIcon color="primary" />
-        <Typography variant="h6">Стилистические метрики текстов</Typography>
+        <Typography variant="h6">{strings.metrics.panel.title}</Typography>
       </Stack>
       <Divider sx={{ mb: 2 }} />
 
       <Typography variant="body2" color="text.secondary" paragraph>
-        Метрики считаются по сохранённым текстам автора (до 50 фрагментов). Ящик с усами
-        показывает разброс по текстам: усы — минимум и максимум, прямоугольник — Q1–Q3, сплошная
-        линия в ящике — медиана, пунктир — среднее; справа от графика — числовые подписи. При
-        выборе второго автора ящики и сравнительные столбцы показываются параллельно, ниже —
-        разница показателей и UMAP-проекция эмбеддингов обоих авторов.
+        {strings.metrics.panel.description}
       </Typography>
 
       <Stack spacing={2} alignItems="stretch">
@@ -390,8 +384,8 @@ export default function AuthorMetricsPanel({
             renderInput={(params) => (
               <TextField
                 {...params}
-                label="Сравнить с автором"
-                placeholder="Не выбрано"
+                label={strings.metrics.panel.compareLabel}
+                placeholder={strings.metrics.panel.comparePlaceholder}
                 size="small"
               />
             )}
@@ -404,14 +398,14 @@ export default function AuthorMetricsPanel({
             disabled={isPending || textCount === 0}
           >
             {isPending
-              ? "Считаем…"
+              ? strings.metrics.panel.computing
               : compareAuthor
-                ? "Рассчитать и сравнить"
-                : "Рассчитать метрики"}
+                ? strings.metrics.panel.computeCompare
+                : strings.metrics.panel.compute}
           </Button>
           {textCount === 0 && (
             <Typography variant="body2" color="warning.main">
-              Нет текстов у автора — добавьте хотя бы один текст, чтобы запустить расчёт.
+              {strings.metrics.panel.noTextsWarning}
             </Typography>
           )}
         </Stack>
@@ -425,7 +419,7 @@ export default function AuthorMetricsPanel({
 
       {mutation.isError && (
         <Alert severity="error" sx={{ mt: 2 }}>
-          Не удалось получить метрики: {mutation.error.message}
+          {format(strings.metrics.panel.loadError, { message: mutation.error.message })}
         </Alert>
       )}
 
@@ -440,13 +434,15 @@ export default function AuthorMetricsPanel({
           <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
             <Typography variant="body2">
               <strong>{primaryName}</strong>
-              {typeof data.text_count === "number" ? ` · текстов в расчёте: ${data.text_count}` : ""}
+              {typeof data.text_count === "number"
+                ? format(strings.metrics.panel.textsInCalc, { count: data.text_count })
+                : ""}
             </Typography>
             {secondary && (
               <Typography variant="body2">
                 <strong>{secondaryName}</strong>
                 {typeof secondary.text_count === "number"
-                  ? ` · текстов в расчёте: ${secondary.text_count}`
+                  ? format(strings.metrics.panel.textsInCalc, { count: secondary.text_count })
                   : ""}
               </Typography>
             )}
@@ -464,7 +460,7 @@ export default function AuthorMetricsPanel({
           )}
 
           <Typography variant="subtitle1" sx={{ fontWeight: 600, pt: 1 }}>
-            Подробно по каждой метрике
+            {strings.metrics.panel.detailTitle}
           </Typography>
 
           <Grid container spacing={2}>
@@ -483,10 +479,12 @@ export default function AuthorMetricsPanel({
                       {meta.description}
                     </Typography>
                     <Typography variant="caption" color="text.disabled" display="block" sx={{ mb: 1 }}>
-                      Единицы: {meta.unitHint}
+                      {format(strings.metrics.panel.units, { unit: meta.unitHint })}
                     </Typography>
                     {!statsA ? (
-                      <Typography color="text.secondary">Нет данных по этой метрике</Typography>
+                      <Typography color="text.secondary">
+                        {strings.metrics.panel.noData}
+                      </Typography>
                     ) : statsB && secondary ? (
                       <Stack spacing={2}>
                         <Stack
@@ -522,22 +520,30 @@ export default function AuthorMetricsPanel({
                           nameB={secondaryName}
                         />
                         <Typography variant="caption" color="text.secondary">
-                          {primaryName}: среднее {fmt(statsA.mean)}, СКО{" "}
-                          {formatStd(data, base, fmt)} · {secondaryName}: среднее {fmt(statsB.mean)}, СКО{" "}
-                          {formatStd(secondary, base, fmt)}
+                          {format(strings.metrics.panel.compareStatsLine, {
+                            nameA: primaryName,
+                            meanA: fmt(statsA.mean),
+                            stdA: formatStd(data, base, fmt),
+                            nameB: secondaryName,
+                            meanB: fmt(statsB.mean),
+                            stdB: formatStd(secondary, base, fmt),
+                          })}
                         </Typography>
                       </Stack>
                     ) : (
                       <Stack spacing={2}>
                         <Box>
                           <Typography variant="caption" color="text.secondary" fontWeight={600}>
-                            Ящик с усами (по текстам автора)
+                            {strings.metrics.panel.boxplotTitle}
                           </Typography>
                           <MetricBoxPlotSvg stats={statsA} formatTick={fmt} />
                         </Box>
                         <MetricMeanMedianBars stats={statsA} formatValue={fmt} />
                         <Typography variant="caption" color="text.secondary">
-                          Среднее: {fmt(statsA.mean)}, СКО: {formatStd(data, base, fmt)}
+                          {format(strings.metrics.panel.statsLine, {
+                            mean: fmt(statsA.mean),
+                            std: formatStd(data, base, fmt),
+                          })}
                         </Typography>
                       </Stack>
                     )}
@@ -568,5 +574,5 @@ function formatStd(
     const p = Number(v);
     if (Number.isFinite(p)) n = p;
   }
-  return n !== undefined ? fmt(n) : "—";
+  return n !== undefined ? fmt(n) : strings.common.dash;
 }

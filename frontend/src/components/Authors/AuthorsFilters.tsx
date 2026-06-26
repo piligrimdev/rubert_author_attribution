@@ -8,6 +8,7 @@ import Stack from "@mui/material/Stack";
 import SearchIcon from "@mui/icons-material/Search";
 import GenreFilterAutocomplete from "@/components/common/GenreFilterAutocomplete";
 import type { ProvidedByFilter } from "@/utils/authorFilter";
+import { strings } from "@/i18n/strings";
 
 interface AuthorsFiltersProps {
   search: string;
@@ -35,7 +36,7 @@ export default function AuthorsFilters({
     >
       <TextField
         size="small"
-        placeholder="Поиск по имени или фамилии…"
+        placeholder={strings.common.searchByNamePlaceholder}
         value={search}
         onChange={(e) => onSearchChange(e.target.value)}
         sx={{ flex: { sm: "1 1 240px" }, minWidth: 200 }}
@@ -57,16 +58,18 @@ export default function AuthorsFilters({
       />
 
       <FormControl size="small" sx={{ minWidth: 220 }}>
-        <InputLabel id="authors-provided-by-filter-label">Кто добавил</InputLabel>
+        <InputLabel id="authors-provided-by-filter-label">
+          {strings.authors.providedBy}
+        </InputLabel>
         <Select
           labelId="authors-provided-by-filter-label"
-          label="Кто добавил"
+          label={strings.authors.providedBy}
           value={providedBy}
           onChange={(e) => onProvidedByChange(e.target.value as ProvidedByFilter)}
         >
-          <MenuItem value="all">Все</MenuItem>
-          <MenuItem value="admin">Администратор</MenuItem>
-          <MenuItem value="mine">Я</MenuItem>
+          <MenuItem value="all">{strings.authors.providedByAll}</MenuItem>
+          <MenuItem value="admin">{strings.authors.providedByAdmin}</MenuItem>
+          <MenuItem value="mine">{strings.authors.providedByMine}</MenuItem>
         </Select>
       </FormControl>
     </Stack>

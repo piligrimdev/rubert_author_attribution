@@ -3,13 +3,11 @@ import axios from "axios";
 import { apiClient } from "./client";
 import type { EmbeddingUmapResponse } from "@/types/embeddingUmap";
 import type { StartComputeMetricsTaskResponse } from "@/types/authorMetrics";
+import { strings } from "@/i18n/strings";
 import { getEmbeddingCompareErrorMessage } from "@/utils/embeddingCompareError";
 
 const POLL_INTERVAL_MS = 500;
 const POLL_DEADLINE_MS = 120_000;
-
-const TASK_FAILED_MESSAGE =
-  "Задача расчёта UMAP завершилась с ошибкой. Возможно, у одного из авторов недостаточно текстов — добавьте тексты и попробуйте позже.";
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => {
@@ -55,5 +53,5 @@ export async function computeEmbeddingCompare(
     }
   }
 
-  throw new Error(TASK_FAILED_MESSAGE);
+  throw new Error(strings.metrics.umap.taskFailed);
 }

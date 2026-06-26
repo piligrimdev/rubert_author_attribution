@@ -12,6 +12,7 @@ import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import { useAuth } from "@/context/AuthContext";
 import type { RegisterRequest } from "@/types/auth";
+import { strings } from "@/i18n/strings";
 
 interface FormValues extends RegisterRequest {
   confirmPassword: string;
@@ -40,7 +41,7 @@ export default function RegisterPage() {
       });
       navigate("/");
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Ошибка регистрации");
+      setError(err.response?.data?.detail || strings.auth.registerError);
     } finally {
       setLoading(false);
     }
@@ -62,13 +63,13 @@ export default function RegisterPage() {
           variant="h4"
           sx={{ fontFamily: "'Playfair Display', serif" }}
         >
-          Атрибуция текста
+          {strings.app.title}
         </Typography>
       </Stack>
 
       <Paper sx={{ p: 4, width: "100%", maxWidth: 420 }}>
         <Typography variant="h5" gutterBottom textAlign="center">
-          Регистрация
+          {strings.auth.registerTitle}
         </Typography>
 
         {error && (
@@ -81,13 +82,13 @@ export default function RegisterPage() {
           <Stack spacing={2}>
             <TextField
               {...register("username", {
-                required: "Введите логин",
+                required: strings.auth.usernameRequired,
                 minLength: {
                   value: 3,
-                  message: "Минимум 3 символа",
+                  message: strings.auth.usernameMinLength,
                 },
               })}
-              label="Логин"
+              label={strings.common.login}
               fullWidth
               autoFocus
               error={!!errors.username}
@@ -95,25 +96,36 @@ export default function RegisterPage() {
             />
             <TextField
               {...register("password", {
-                required: "Введите пароль",
+                required: strings.auth.passwordRequired,
                 minLength: {
-                  value: 4,
-                  message: "Минимум 4 символа",
+                  value: 8,
+                  message: strings.auth.passwordMinLength,
+                },
+                validate: (value) => {
+                  if (!/\p{L}/u.test(value)) {
+                    return strings.auth.passwordNeedsLetter;
+                  }
+                  if (!/\d/.test(value)) {
+                    return strings.auth.passwordNeedsDigit;
+                  }
+                  return true;
                 },
               })}
-              label="Пароль"
+              label={strings.common.password}
               type="password"
               fullWidth
               error={!!errors.password}
-              helperText={errors.password?.message}
+              helperText={
+                errors.password?.message ?? strings.auth.passwordHint
+              }
             />
             <TextField
               {...register("confirmPassword", {
-                required: "Подтвердите пароль",
+                required: strings.auth.confirmPasswordRequired,
                 validate: (v) =>
-                  v === watch("password") || "Пароли не совпадают",
+                  v === watch("password") || strings.auth.passwordsMismatch,
               })}
-              label="Подтвердите пароль"
+              label={strings.auth.confirmPassword}
               type="password"
               fullWidth
               error={!!errors.confirmPassword}
@@ -127,7 +139,7 @@ export default function RegisterPage() {
               loading={loading}
               startIcon={<PersonAddIcon />}
             >
-              Зарегистрироваться
+              {strings.auth.registerButton}
             </Button>
           </Stack>
         </form>
@@ -137,14 +149,14 @@ export default function RegisterPage() {
           textAlign="center"
           sx={{ mt: 2, color: "text.secondary" }}
         >
-          Уже есть аккаунт?{" "}
+          {strings.auth.hasAccount}{" "}
           <Typography
             component={Link}
             to="/login"
             variant="body2"
             sx={{ color: "primary.main", textDecoration: "none" }}
           >
-            Войти
+            {strings.auth.loginButton}
           </Typography>
         </Typography>
       </Paper>

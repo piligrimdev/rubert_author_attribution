@@ -19,6 +19,7 @@ import {
   filterAuthors,
   type ProvidedByFilter,
 } from "@/utils/authorFilter";
+import { format, strings } from "@/i18n/strings";
 
 export default function AuthorsPage() {
   const [search, setSearch] = useState("");
@@ -54,9 +55,7 @@ export default function AuthorsPage() {
           alignItems: "flex-start",
         }}
       >
-        <PageTitle subtitle="Список авторов в базе данных. Стилистические метрики (графики) доступны на странице выбранного автора.">
-          Авторы
-        </PageTitle>
+        <PageTitle>{strings.authors.title}</PageTitle>
         <Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
           <Button
             component={Link}
@@ -64,7 +63,7 @@ export default function AuthorsPage() {
             variant="outlined"
             startIcon={<UploadFileIcon />}
           >
-            Импорт CSV
+            {strings.authors.importCsv}
           </Button>
           <Button
             component={Link}
@@ -72,7 +71,7 @@ export default function AuthorsPage() {
             variant="contained"
             startIcon={<PersonAddIcon />}
           >
-            Добавить автора
+            {strings.authors.addAuthor}
           </Button>
         </Stack>
       </Box>
@@ -96,21 +95,21 @@ export default function AuthorsPage() {
 
       {error && (
         <Alert severity="error">
-          Не удалось загрузить список авторов: {error.message}
+          {format(strings.authors.loadError, { message: error.message })}
         </Alert>
       )}
 
       {authors && !authors.length && (
         <Typography color="text.secondary" sx={{ py: 4, textAlign: "center" }}>
-          Авторов пока нет. Добавьте первого!
+          {strings.authors.empty}
         </Typography>
       )}
 
       {authors && authors.length > 0 && filteredAuthors.length === 0 && (
         <Typography color="text.secondary" sx={{ py: 4, textAlign: "center" }}>
           {hasActiveFilters
-            ? "По выбранным фильтрам авторов не найдено."
-            : "Авторов пока нет. Добавьте первого!"}
+            ? strings.authors.emptyFiltered
+            : strings.authors.empty}
         </Typography>
       )}
 

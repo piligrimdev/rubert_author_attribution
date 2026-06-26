@@ -18,6 +18,7 @@ import { canDeleteText, canEditText } from "@/utils/permissions";
 import { getApiErrorDetail, isForbiddenError } from "@/utils/apiError";
 import type { CurrentUser } from "@/types/auth";
 import type { TextItem } from "@/types/text";
+import { strings } from "@/i18n/strings";
 
 interface AuthorTextItemProps {
   text: TextItem;
@@ -52,7 +53,7 @@ export default function AuthorTextItem({
   const handleSave = async () => {
     const trimmed = draft.trim();
     if (!trimmed) {
-      setErrorMessage("Текст не может быть пустым");
+      setErrorMessage(strings.authorDetail.textEmpty);
       return;
     }
     if (trimmed === text.text) {
@@ -73,13 +74,10 @@ export default function AuthorTextItem({
       if (isForbiddenError(err)) {
         setIsEditing(false);
         setForbiddenMessage(
-          getApiErrorDetail(
-            err,
-            "Редактировать этот текст может только администратор или пользователь, который его добавил.",
-          ),
+          getApiErrorDetail(err, strings.authorDetail.editTextForbidden),
         );
       } else {
-        setErrorMessage(getApiErrorDetail(err, "Не удалось сохранить текст"));
+        setErrorMessage(getApiErrorDetail(err, strings.authorDetail.saveTextFailed));
       }
     }
   };
@@ -96,10 +94,10 @@ export default function AuthorTextItem({
           <Chip label={text.genre} size="small" variant="outlined" />
           <Stack direction="row" spacing={0.5}>
             {editable && !isEditing && (
-              <Tooltip title="Редактировать текст">
+              <Tooltip title={strings.dialogs.editTextTooltip}>
                 <IconButton
                   size="small"
-                  aria-label="Редактировать текст"
+                  aria-label={strings.dialogs.editTextTooltip}
                   onClick={() => {
                     setIsEditing(true);
                     setErrorMessage(null);
@@ -110,11 +108,11 @@ export default function AuthorTextItem({
               </Tooltip>
             )}
             {deletable && !isEditing && (
-              <Tooltip title="Удалить текст">
+              <Tooltip title={strings.dialogs.deleteTextTooltip}>
                 <IconButton
                   size="small"
                   color="error"
-                  aria-label="Удалить текст"
+                  aria-label={strings.dialogs.deleteTextTooltip}
                   onClick={() => onDelete(text)}
                 >
                   <DeleteOutlineIcon fontSize="small" />
@@ -142,7 +140,7 @@ export default function AuthorTextItem({
                 onClick={handleSave}
                 disabled={editTextMutation.isPending}
               >
-                Сохранить
+                {strings.common.save}
               </Button>
               <Button
                 variant="outlined"
@@ -151,7 +149,7 @@ export default function AuthorTextItem({
                 onClick={handleCancel}
                 disabled={editTextMutation.isPending}
               >
-                Отмена
+                {strings.common.cancel}
               </Button>
             </Stack>
           </Stack>

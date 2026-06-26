@@ -1,7 +1,12 @@
+export type CorpusCsvImportResultError = {
+  ind: number;
+  error: string;
+};
+
 export type CorpusCsvImportResult = {
   added: number;
   skipped_empty: number;
-  errors: number;
+  errors: CorpusCsvImportResultError[];
 };
 
 export type StartCorpusImportTaskResponse = {

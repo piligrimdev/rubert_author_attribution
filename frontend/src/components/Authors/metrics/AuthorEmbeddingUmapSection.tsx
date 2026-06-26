@@ -7,6 +7,7 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Box from "@mui/material/Box";
 import ScatterPlotIcon from "@mui/icons-material/ScatterPlot";
 import type { EmbeddingUmapResponse } from "@/types/embeddingUmap";
+import { format, strings } from "@/i18n/strings";
 
 const EmbeddingUmapPlot = lazy(
   () => import("@/components/Embeddings/EmbeddingUmapPlot"),
@@ -22,16 +23,23 @@ export default function AuthorEmbeddingUmapSection({ data }: Props) {
       <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
         <ScatterPlotIcon color="primary" fontSize="small" />
         <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-          UMAP-проекция эмбеддингов
+          {strings.metrics.umap.title}
         </Typography>
       </Stack>
       <Typography variant="body2" color="text.secondary" paragraph>
-        Двумерная проекция эмбеддингов текстов двух авторов (PCA → UMAP). Точки одного автора
-        должны образовывать кластер — так видно, насколько стилистически различимы корпуса.
+        {strings.metrics.umap.description}
       </Typography>
       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
-        <Chip label={`${data.meta.n_points} точек`} size="small" variant="outlined" />
-        <Chip label={`${data.meta.n_authors} авторов`} size="small" variant="outlined" />
+        <Chip
+          label={format(strings.metrics.umap.points, { count: data.meta.n_points })}
+          size="small"
+          variant="outlined"
+        />
+        <Chip
+          label={format(strings.metrics.umap.authors, { count: data.meta.n_authors })}
+          size="small"
+          variant="outlined"
+        />
       </Stack>
       <Suspense
         fallback={
